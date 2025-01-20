@@ -10,7 +10,7 @@ use types::{
     AccountBookCellData, AccountBookData, BuyIntentData, DobSellingData, Uint128Opt,
     WithdrawalIntentData,
 };
-use utils::{account_book_proof::SmtKey, Hash};
+use utils::{Hash, SmtKey};
 
 const DATA_ASSET_AMOUNT: u128 = 200;
 const DATA_MIN_CAPACITY: u64 = 1000;
@@ -391,6 +391,7 @@ fn test_simple_withdrawal_suc() {
     let mut context = new_context();
     let tx = TransactionBuilder::default().build();
     let def_lock_script = build_always_suc_script(&mut context, &[0x11; 32]);
+    let out_xudt_lock_script: Script = build_always_suc_script(&mut context, &[1, 2, 3, 4]);
     let xudt_script = build_xudt_script(&mut context);
 
     let spore_id: Hash = [0x1B; 32].into();
@@ -480,7 +481,7 @@ fn test_simple_withdrawal_suc() {
         tx.as_advanced_builder()
             .input(build_input(input_cell))
             .output(output_cell)
-            .output_data((10000u128 - 200).to_le_bytes().pack())
+            .output_data((10000u128 - 4000).to_le_bytes().pack())
             .witness(Default::default())
             .build()
     };
@@ -530,6 +531,7 @@ fn test_simple_withdrawal_suc() {
             .spore_id(spore_id.into())
             .spore_level((spore_level as u8).into())
             .cluster_id(cluster_id.into())
+            .owner_script_hash(out_xudt_lock_script.calc_script_hash())
             .build();
         let withdrawal_intent_script = build_withdrawal_intent_script(
             &mut context,
@@ -554,7 +556,7 @@ fn test_simple_withdrawal_suc() {
         let output_cell = {
             CellOutput::new_builder()
                 .capacity(16.pack())
-                .lock(def_lock_script.clone())
+                .lock(out_xudt_lock_script.clone())
                 .type_(xudt_script.pack())
                 .build()
         };
@@ -562,7 +564,7 @@ fn test_simple_withdrawal_suc() {
         tx.as_advanced_builder()
             .input(build_input(input_cell))
             .output(output_cell)
-            .output_data(200u128.to_le_bytes().pack())
+            .output_data(4000u128.to_le_bytes().pack())
             .witness(
                 WitnessArgs::new_builder()
                     .input_type(Some(withdrawal_intent_data.as_bytes()).pack())
@@ -575,4 +577,9 @@ fn test_simple_withdrawal_suc() {
 
     let tx = context.complete_tx(tx);
     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
+}
+
+#[test]
+fn create_account_book() {
+    // Create Account book
 }

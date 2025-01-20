@@ -327,7 +327,7 @@ pub fn update_accountbook(
     tx: TransactionView,
     price: u128,
 ) -> TransactionView {
-    use utils::{account_book_proof::SmtKey, Hash};
+    use utils::{Hash, SmtKey};
 
     // Update SMT
     let mut smt = AccountBook::new_test();

@@ -8,6 +8,7 @@ use ckb_std::{
 };
 use types::error::SilentBerryError;
 
+#[derive(Debug)]
 pub struct UDTInfo {
     pub inputs: Vec<(u128, usize)>,
     pub outputs: Vec<(u128, usize)>,

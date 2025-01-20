@@ -1,173 +1,256 @@
-// #[derive(Default)]
-// struct TxWithdrawalIntentBuilder {
-//     pub is_input: bool,
+// use crate::{ALWAYS_SUC_NAME, XUDT_NAME};
+// use ckb_testtool::{
+//     bytes::Bytes,
+//     ckb_types::{
+//         core::{ScriptHashType, TransactionView},
+//         packed::{CellOutput, Script},
+//         prelude::{Builder, Entity, Pack, Unpack},
+//     },
+//     context::Context,
+// };
+// use types::blockchain::{CellInput, WitnessArgs};
+// use utils::Hash;
+
+// const CKB_DEFAULT_LOCK_ARGS: [u8; 32] = [1u8; 32];
+// const XUDT_DEFAULT_OWNER_SCRIPT_HASH: [u8; 32] = [1u8; 32];
+// const XUDT_DEFAULT_LOCK_SCRIPT_HASH: [u8; 32] = [1u8; 32];
+
+// pub trait TxCellBuilder {
+//     fn build_cell(&self, context: &mut Context) -> CellOutput;
+//     fn build_cell_data(&self) -> Bytes;
+//     fn get_since(&self) -> Option<u64> {
+//         None
+//     }
+//     fn get_lock_witness(&self) -> Option<Bytes> {
+//         None
+//     }
+//     fn get_type_witness(&self) -> Option<Bytes> {
+//         None
+//     }
 // }
 
-// impl TxWithdrawalIntentBuilder {
-//     fn _create_intent(mut self) -> Self {
-//         self.is_input = false;
-//         self
-//     }
-//     fn release_intent(mut self) -> Self {
-//         self.is_input = true;
-//         self
+// pub fn build_tx(
+//     context: &mut Context,
+//     tx: TransactionView,
+//     input: Option<&dyn TxCellBuilder>,
+//     output: Option<&dyn TxCellBuilder>,
+// ) -> TransactionView {
+//     let mut tx = tx;
+//     if let Some(input) = input {
+//         let cell_output = input.build_cell(context);
+//         let cell_data = input.build_cell_data();
+//         let cell = context.create_cell(cell_output, cell_data);
+//         let since = if let Some(since) = input.get_since() {
+//             since
+//         } else {
+//             Default::default()
+//         };
+
+//         tx = tx
+//             .as_advanced_builder()
+//             .input(
+//                 CellInput::new_builder()
+//                     .previous_output(cell)
+//                     .since(since.pack())
+//                     .build(),
+//             )
+//             .build();
+
+//         let index = tx.inputs().len();
+//         if index != 0 {
+//             if tx.witnesses().get(index - 1).is_none() {
+//                 tx = tx
+//                     .as_advanced_builder()
+//                     .witness(
+//                         WitnessArgs::new_builder()
+//                             .lock(input.get_lock_witness().pack())
+//                             .input_type(input.get_type_witness().pack())
+//                             .build()
+//                             .as_bytes()
+//                             .pack(),
+//                     )
+//                     .build();
+//             } else {
+//                 let mut witnesses: Vec<_> = tx.witnesses().into_iter().map(|w| w).collect();
+//                 let witness =
+//                     WitnessArgs::new_unchecked(witnesses.get(index - 1).unwrap().unpack());
+
+//                 let witness = witness
+//                     .as_builder()
+//                     .lock(input.get_lock_witness().pack())
+//                     .input_type(input.get_type_witness().pack())
+//                     .build()
+//                     .as_bytes();
+
+//                 witnesses[index - 1] = witness.pack();
+//                 tx = tx.as_advanced_builder().set_witnesses(witnesses).build();
+//             }
+//         }
 //     }
 
-//     fn build(self, context: &mut Context, tx: TransactionView) -> TransactionView {
-//         tx
+//     if let Some(output) = output {
+//         let cell_output = output.build_cell(context);
+//         let cell_data = output.build_cell_data();
+
+//         tx = tx
+//             .as_advanced_builder()
+//             .output(cell_output)
+//             .output_data(cell_data.pack())
+//             .build();
+
+//         let index = tx.outputs().len();
+//         if index != 0 {
+//             if tx.witnesses().get(index - 1).is_none() {
+//                 tx = tx
+//                     .as_advanced_builder()
+//                     .witness(
+//                         WitnessArgs::new_builder()
+//                             .output_type(output.get_type_witness().pack())
+//                             .build()
+//                             .as_bytes()
+//                             .pack(),
+//                     )
+//                     .build();
+//             } else {
+//                 let mut witnesses: Vec<_> = tx.witnesses().into_iter().map(|w| w).collect();
+//                 let witness =
+//                     WitnessArgs::new_unchecked(witnesses.get(index - 1).unwrap().unpack());
+
+//                 let witness = witness
+//                     .as_builder()
+//                     .output_type(output.get_type_witness().pack())
+//                     .build()
+//                     .as_bytes();
+
+//                 witnesses[index - 1] = witness.pack();
+//                 tx = tx.as_advanced_builder().set_witnesses(witnesses).build();
+//             }
+//         }
+//     }
+
+//     tx
+// }
+
+// fn build_script(context: &mut Context, name: &str, args: Vec<u8>) -> Script {
+//     let op = context.deploy_cell_by_name(name);
+//     context
+//         .build_script_with_hash_type(&op, ScriptHashType::Data2, args.into())
+//         .unwrap()
+// }
+
+// #[derive(Clone)]
+// pub struct XUdtCellBuilder {
+//     udt: u128,
+//     lock_script: Script,
+//     owner_script_hash: Hash,
+//     other_args: Vec<u8>,
+// }
+// impl XUdtCellBuilder {
+//     pub fn new(context: &mut Context, udt: u128) -> Self {
+//         let lock_script = build_script(
+//             context,
+//             ALWAYS_SUC_NAME,
+//             XUDT_DEFAULT_LOCK_SCRIPT_HASH.to_vec().into(),
+//         );
+//         Self {
+//             udt,
+//             lock_script,
+//             owner_script_hash: XUDT_DEFAULT_OWNER_SCRIPT_HASH.into(),
+//             other_args: Default::default(),
+//         }
+//     }
+//     pub fn set_udt(mut self, udt: u128) -> Self {
+//         self.udt = udt;
+//         self
+//     }
+// }
+// impl TxCellBuilder for XUdtCellBuilder {
+//     fn build_cell(&self, context: &mut Context) -> CellOutput {
+//         let xudt_script = build_script(
+//             context,
+//             XUDT_NAME,
+//             [self.owner_script_hash.as_slice(), &self.other_args].concat(),
+//         );
+
+//         CellOutput::new_builder()
+//             .capacity((size_of::<u128>() as u64).pack())
+//             .lock(self.lock_script.clone())
+//             .type_(Some(xudt_script).pack())
+//             .build()
+//     }
+//     fn build_cell_data(&self) -> Bytes {
+//         self.udt.to_le_bytes().to_vec().into()
 //     }
 // }
 
 // #[derive(Clone)]
-// struct TxXudtBuilder {
-//     amount: u128,
-//     owner_script_hash: Hash,
-//     outpoint: OutPoint,
-// }
-// impl TxXudtBuilder {
-//     fn new(a: u128, context: &mut Context) -> Self {
-//         Self {
-//             amount: a,
-//             owner_script_hash: [0xAA; 32].into(),
-//             outpoint: context.deploy_cell_by_name(XUDT_NAME),
-//         }
-//     }
-//     fn build_script(&self, context: &mut Context) -> Script {
-//         context
-//             .build_script_with_hash_type(
-//                 &self.outpoint,
-//                 ckb_testtool::ckb_types::core::ScriptHashType::Data2,
-//                 self.owner_script_hash.clone().into(),
-//             )
-//             .unwrap()
-//     }
-//     fn build_cell_data(&self) -> ckb_testtool::bytes::Bytes {
-//         self.amount.to_le_bytes().to_vec().into()
-//     }
-//     fn get_script_hash(&self, context: &mut Context) -> Hash {
-//         context
-//             .build_script_with_hash_type(
-//                 &self.outpoint,
-//                 ScriptHashType::Data1,
-//                 self.owner_script_hash.clone().into(),
-//             )
-//             .unwrap()
-//             .calc_script_hash()
-//             .into()
-//     }
-// }
-
-// struct TxAccountBookBuilder {
-//     is_selling: bool,
-//     account_book_capacity: u64,
-//     xudt_capacity: u64,
+// pub struct EmptyCellBuilder {
+//     capacity: u64,
 //     lock_script: Script,
-
-//     cluster_id: Hash,
 // }
-// impl TxAccountBookBuilder {
-//     fn new(context: &mut Context) -> Self {
+// impl EmptyCellBuilder {
+//     pub fn new(context: &mut Context, c: u64) -> Self {
+//         let script = build_script(context, ALWAYS_SUC_NAME, CKB_DEFAULT_LOCK_ARGS.to_vec());
 //         Self {
-//             is_selling: false,
-//             account_book_capacity: 64,
-//             xudt_capacity: 16,
-//             lock_script: build_always_suc_script(context, &[0x10; 32]),
-
-//             cluster_id: [0u8; 32].into(),
+//             capacity: c,
+//             lock_script: script,
 //         }
 //     }
-
-//     fn _selling(mut self) -> Self {
-//         self.is_selling = true;
-//         self
-//     }
-//     fn withdrawal(mut self) -> Self {
-//         self.is_selling = false;
-//         self
-//     }
-
-//     fn build(
-//         self,
-//         context: &mut Context,
-//         tx: TransactionView,
-//         input_xudt: TxXudtBuilder,
-//         output_xudt: TxXudtBuilder,
-//     ) -> TransactionView {
-//         let input_len = tx.inputs().len();
-//         assert_eq!(input_len, tx.outputs().len());
-//         assert_eq!(input_len, tx.witnesses().len());
-
-//         let account_book_data = AccountBookData::new_builder()
-//             .dob_selling_code_hash((*DOBSellingCodeHash).pack())
-//             .buy_intent_code_hash((*BuyIntentCodeHash).pack())
-//             .withdrawal_intent_code_hash((*WithdrawalIntentCodeHash).pack())
-//             .xudt_script_hash(input_xudt.get_script_hash(context).into())
-//             .input_type_proxy_lock_code_hash((*InputTypeProxyLockCodeHash).pack())
-//             .cluster_id(self.cluster_id.into())
-//             .build();
-
-//         let account_book_cell_data = AccountBookCellData::new_builder().build();
-
-//         let account_book_script = build_account_book_script(context, account_book_data.clone());
-//         let input_proxy_script = build_input_proxy_script(
-//             context,
-//             account_book_script
-//                 .as_ref()
-//                 .unwrap()
-//                 .calc_script_hash()
-//                 .into(),
-//         );
-//         let input_cell1 = {
-//             let input_xudt_script = input_xudt.build_script(context);
-//             context.create_cell(
-//                 CellOutput::new_builder()
-//                     .capacity(self.xudt_capacity.pack())
-//                     .lock(input_proxy_script.clone())
-//                     .type_(Some(input_xudt_script.clone()).pack())
-//                     .build(),
-//                 input_xudt.build_cell_data(),
-//             )
-//         };
-//         let output_cell1 = {
-//             let output_xudt_script = output_xudt.build_script(context);
-//             CellOutput::new_builder()
-//                 .capacity(self.xudt_capacity.pack())
-//                 .lock(input_proxy_script.clone())
-//                 .type_(Some(output_xudt_script).pack())
-//                 .build()
-//         };
-
-//         let input_cell2 = context.create_cell(
-//             CellOutput::new_builder()
-//                 .capacity(self.xudt_capacity.pack())
-//                 .lock(self.lock_script.clone())
-//                 .type_(account_book_script.clone().pack())
-//                 .build(),
-//             input_xudt.build_cell_data(),
-//         );
-//         let output_cell2 = {
-//             CellOutput::new_builder()
-//                 .capacity(self.account_book_capacity.pack())
-//                 .lock(self.lock_script.clone())
-//                 .type_(account_book_script.clone().pack())
-//                 .build()
-//         };
-
-//         tx.as_advanced_builder()
-//             .input(build_input(input_cell1))
-//             .output(output_cell1)
-//             .output_data(output_xudt.build_cell_data().pack())
-//             .witness(Default::default())
-//             .input(build_input(input_cell2))
-//             .output(output_cell2)
-//             .output_data(account_book_cell_data.as_bytes().pack())
-//             .witness(
-//                 WitnessArgs::new_builder()
-//                     .output_type(Some(account_book_data.as_bytes()).pack())
-//                     .build()
-//                     .as_bytes()
-//                     .pack(),
-//             )
+// }
+// impl TxCellBuilder for EmptyCellBuilder {
+//     fn build_cell(&self, _context: &mut Context) -> CellOutput {
+//         CellOutput::new_builder()
+//             .capacity(self.capacity.pack())
+//             .lock(self.lock_script.clone())
 //             .build()
 //     }
+//     fn build_cell_data(&self) -> Bytes {
+//         Default::default()
+//     }
+// }
+
+// #[derive(Clone)]
+// pub struct DobSellingBuilder {
+//     udt: u128,
+// }
+// impl DobSellingBuilder {
+//     pub fn new(context: &mut Context, xudt: XUdtCellBuilder) -> Self {
+//         Self { udt: xudt.udt }
+//     }
+// }
+// impl TxCellBuilder for DobSellingBuilder {
+//     fn build_cell(&self, context: &mut Context) -> CellOutput {
+//         let xudt_script = build_script(
+//             context,
+//             XUDT_NAME,
+//             [self.owner_script_hash.as_slice(), &self.other_args].concat(),
+//         );
+
+//         CellOutput::new_builder()
+//             .capacity((size_of::<u128>() as u64).pack())
+//             .lock(self.lock_script.clone())
+//             .type_(Some(xudt_script).pack())
+//             .build()
+//     }
+//     fn build_cell_data(&self) -> Bytes {
+//         self.udt.to_le_bytes().to_vec().into()
+//     }
+// }
+
+// #[test]
+// fn test_simple_create_buy_intent() {
+//     use crate::{new_context, verify_and_dump_failed_tx, MAX_CYCLES};
+
+//     let mut context = new_context();
+//     let tx = TransactionView::new_advanced_builder().build();
+
+//     let input_xudt = XUdtCellBuilder::new(&mut context, 100000);
+//     let output_xudt = input_xudt.clone().set_udt(100000);
+//     let tx = build_tx(&mut context, tx, Some(&input_xudt), Some(&output_xudt));
+
+//     let empty_ckb = EmptyCellBuilder::new(&mut context, 10000);
+//     let tx = build_tx(&mut context, tx, Some(&empty_ckb), None);
+
+//     let tx = context.complete_tx(tx);
+//     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 // }

@@ -3,7 +3,11 @@
 extern crate alloc;
 
 #[cfg(feature = "smt")]
-pub mod account_book_proof;
+mod account_book_proof;
+#[cfg(feature = "smt")]
+pub use account_book_proof::{AccountBookProof, SmtKey, H256};
+#[cfg(all(feature = "smt", feature = "std"))]
+pub use account_book_proof::{SMTTree, SmtValue};
 
 mod hash;
 pub use hash::{Hash, HASH_SIZE};
@@ -14,10 +18,12 @@ pub use udt_info::UDTInfo;
 use alloc::vec::Vec;
 use ckb_std::{
     ckb_constants::Source,
-    high_level::{load_cell_lock, load_cell_type},
+    ckb_types::prelude::{Entity, Reader},
+    high_level::{load_cell_data, load_cell_lock, load_cell_type, load_witness_args},
     log,
 };
-use types::error::SilentBerryError as Error;
+use types::{error::SilentBerryError as Error, AccountBookCellData};
+use types::{AccountBookData, WithdrawalIntentData};
 
 pub const MAX_CELLS_LEN: usize = 256;
 
@@ -91,4 +97,56 @@ pub fn get_spore_level(spore_data: &spore_types::spore::SporeData) -> Result<u8,
         log::error!("Get level by Spore Content failed, content: {}", content);
         Error::Spore
     })? as u8)
+}
+
+pub fn load_account_book_data(index: usize, source: Source) -> Result<AccountBookData, Error> {
+    let witness = load_witness_args(index, source)?;
+    let witness = witness
+        .output_type()
+        .to_opt()
+        .ok_or_else(|| {
+            log::error!("Load witnesses failed, output type is None");
+            Error::ParseWitness
+        })?
+        .raw_data();
+
+    types::AccountBookDataReader::verify(witness.to_vec().as_slice(), true)?;
+    Ok(AccountBookData::new_unchecked(witness))
+}
+
+pub fn load_account_bool_cell_data(
+    index: usize,
+    source: Source,
+) -> Result<AccountBookCellData, Error> {
+    let data = load_cell_data(index, source)?;
+
+    types::AccountBookCellDataReader::verify(&data, true)?;
+    Ok(AccountBookCellData::new_unchecked(data.into()))
+}
+
+pub fn load_withdrawal_data(
+    index: usize,
+    source: Source,
+    is_input: bool,
+) -> Result<WithdrawalIntentData, Error> {
+    let witness_args = load_witness_args(index, source)?;
+
+    let data = if is_input {
+        witness_args.input_type()
+    } else {
+        witness_args.output_type()
+    }
+    .to_opt()
+    .ok_or_else(|| {
+        log::error!(
+            "Withdrawal witness not found in index: {}, source: {:?}",
+            index,
+            source
+        );
+        Error::Unknow
+    })?
+    .raw_data();
+
+    types::WithdrawalIntentDataReader::verify(&data, true)?;
+    Ok(WithdrawalIntentData::new_unchecked(data))
 }

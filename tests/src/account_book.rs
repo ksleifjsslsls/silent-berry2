@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use utils::{
-    account_book_proof::{SMTTree, SmtKey, SmtValue, H256},
-    Hash,
+    Hash, {SMTTree, SmtKey, SmtValue, H256},
 };
 
 #[derive(Default)]
@@ -115,7 +114,7 @@ fn test_smt() {
     let root_hash_3 = smt.root_hash();
     let total_3 = smt.get_total();
 
-    let cproof = utils::account_book_proof::AccountBookProof::new(proof);
+    let cproof = utils::AccountBookProof::new(proof);
 
     assert!(cproof
         .verify(
