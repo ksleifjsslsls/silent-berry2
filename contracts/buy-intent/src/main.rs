@@ -215,11 +215,11 @@ fn program_entry2() -> Result<(), Error> {
             return Err(Error::CheckXUDT);
         }
 
-        let asset_amount: u128 = data.price().unpack();
-        if udt_info.outputs[1].0 != asset_amount {
+        let price: u128 = data.price().unpack();
+        if udt_info.outputs[1].0 != price {
             log::error!(
                 "Incorrect xUDT payment: Need: {}, Actually: {}",
-                asset_amount,
+                price,
                 udt_info.outputs[0].0
             );
             return Err(Error::CheckXUDT);

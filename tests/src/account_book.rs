@@ -74,7 +74,7 @@ impl AccountBook {
         self.get_item(SmtKey::AccountBalance)
     }
 
-    pub fn get_all_income(&self) -> u128 {
+    pub fn get_total_income(&self) -> u128 {
         self.get_item(SmtKey::TotalIncome)
     }
 }
@@ -89,7 +89,7 @@ fn test_smt() {
         [*count; 32].into()
     }
 
-    let all_income = 400000;
+    let total_income = 400000;
 
     smt.update(SmtKey::AccountBalance, 80000);
     smt.update(SmtKey::Auther, 2001);
@@ -99,7 +99,7 @@ fn test_smt() {
     smt.update(SmtKey::Buyer(new_hash(&mut c)), 4444);
     smt.update(SmtKey::Buyer(new_hash(&mut c)), 555);
     smt.update(SmtKey::Buyer(new_hash(&mut c)), 0);
-    smt.update(SmtKey::TotalIncome, all_income);
+    smt.update(SmtKey::TotalIncome, total_income);
 
     println!("c it: {}", c);
     let k = SmtKey::Buyer(new_hash(&mut c));
@@ -118,12 +118,17 @@ fn test_smt() {
     let cproof = utils::account_book_proof::AccountBookProof::new(proof);
 
     assert!(cproof
-        .verify(root_hash_1, all_income, total_1.clone(), (k.clone(), None))
+        .verify(
+            root_hash_1,
+            total_income,
+            total_1.clone(),
+            (k.clone(), None)
+        )
         .unwrap());
     assert!(cproof
-        .verify(root_hash_2, all_income, total_1, (k.clone(), Some(200)))
+        .verify(root_hash_2, total_income, total_1, (k.clone(), Some(200)))
         .unwrap());
     assert!(cproof
-        .verify(root_hash_3, all_income, total_3, (k.clone(), Some(200)))
+        .verify(root_hash_3, total_income, total_3, (k.clone(), Some(200)))
         .unwrap());
 }

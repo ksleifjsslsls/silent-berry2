@@ -48,7 +48,7 @@ fn load_verified_data() -> Result<AccountBookData, Error> {
         .clone()
         .as_builder()
         .proof(Default::default())
-        .all_income_udt(0.pack())
+        .total_income_udt(0.pack())
         .withdrawn_udt(Uint128Opt::new_builder().set(None).build())
         .build();
     let hash = Hash::ckb_hash(data2.as_slice());
@@ -77,13 +77,13 @@ fn load_verified_cell_data(is_selling: bool) -> Result<(AccountBookCellData, Has
             .clone()
             .as_builder()
             .smt_root_hash(Default::default())
-            .member_count(0u32.pack())
+            .buyer_count(0u32.pack())
             .build();
         let tmp_new = new_data
             .clone()
             .as_builder()
             .smt_root_hash(Default::default())
-            .member_count(0u32.pack())
+            .buyer_count(0u32.pack())
             .build();
 
         if tmp_old.as_slice() != tmp_new.as_slice() {
@@ -92,19 +92,19 @@ fn load_verified_cell_data(is_selling: bool) -> Result<(AccountBookCellData, Has
         }
     }
 
-    let old_member_count: u32 = old_data.member_count().unpack();
-    let new_member_count: u32 = new_data.member_count().unpack();
+    let old_buyer_count: u32 = old_data.buyer_count().unpack();
+    let new_buyer_count: u32 = new_data.buyer_count().unpack();
     if is_selling {
-        if old_member_count + 1 != new_member_count {
+        if old_buyer_count + 1 != new_buyer_count {
             log::error!(
-                "CellData member count incorrect: {}, {}",
-                old_member_count,
-                new_member_count
+                "CellData buyer count incorrect: {}, {}",
+                old_buyer_count,
+                new_buyer_count
             );
             return Err(Error::AccountBookModified);
         }
-    } else if old_member_count != new_member_count {
-        log::error!("Withdrawal does not allow update member_count");
+    } else if old_buyer_count != new_buyer_count {
+        log::error!("Withdrawal does not allow update buyer_count");
         return Err(Error::AccountBookModified);
     }
 
@@ -296,12 +296,12 @@ fn selling(
         return Err(Error::Spore);
     }
 
-    let all_income_udt: u128 = witness_data.all_income_udt().unpack();
+    let total_income_udt: u128 = witness_data.total_income_udt().unpack();
 
     let proof = utils::account_book_proof::AccountBookProof::new(witness_data.proof().unpack());
     if !proof.verify(
         old_smt_hash,
-        all_income_udt - price,
+        total_income_udt - price,
         input_amount,
         (SmtKey::Buyer(spore_id.clone()), None),
     )? {
@@ -312,7 +312,7 @@ fn selling(
     let new_smt_hash: Hash = cell_data.smt_root_hash().into();
     if !proof.verify(
         new_smt_hash,
-        all_income_udt,
+        total_income_udt,
         output_amount,
         (SmtKey::Buyer(spore_id), Some(0)),
     )? {
@@ -426,20 +426,20 @@ fn withdrawal(
     };
 
     let old_amount: Option<u128> = witness_data.withdrawn_udt().to_opt().map(|v| v.unpack());
-    let all_income = witness_data.all_income_udt().unpack();
+    let total_income = witness_data.total_income_udt().unpack();
     let total_udt = udt_info.total();
 
     // SMT
     let proof = utils::account_book_proof::AccountBookProof::new(witness_data.proof().unpack());
     proof.verify(
         old_smt_hash,
-        all_income,
+        total_income,
         total_udt,
         (smt_key.clone(), old_amount),
     )?;
 
-    let all_income: u128 = witness_data.all_income_udt().unpack();
-    let new_amount = all_income
+    let total_income: u128 = witness_data.total_income_udt().unpack();
+    let new_amount = total_income
         .checked_mul(ratio as u128)
         .ok_or(Error::AccountBookOverflow)?
         .checked_div(100)
@@ -450,7 +450,7 @@ fn withdrawal(
     let new_smt_hash = cell_data.smt_root_hash().into();
     proof.verify(
         new_smt_hash,
-        all_income,
+        total_income,
         total_udt,
         (smt_key, Some(new_amount)),
     )?;

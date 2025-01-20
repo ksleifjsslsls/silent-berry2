@@ -45,14 +45,14 @@ table AccountBookData {
 
     # The following values ​​will not participate in the calculation of Args
     proof: Bytes,
-    all_income_udt: Uint128,    # All income
+    total_income_udt: Uint128,    # All total
     withdrawn_udt: Uint128Opt,  # Used when withdrawing
 }
 
 # Cell Data
 table AccountBookCellData {
     smt_root_hash: Byte32,
-    member_count: Uint32,
+    buyer_count: Uint32,
 
     owner_script_hash: Byte32,
     auther_id: Byte32,

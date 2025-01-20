@@ -245,13 +245,13 @@ fn test_simple_selling() {
     let ab_cell_data = def_account_book_cell_data(&mut context)
         .as_builder()
         // .smt_root_hash(old_smt_hash.into())
-        .member_count(15u32.pack())
+        .buyer_count(15u32.pack())
         .build();
     let ab_cell_data_new = ab_cell_data
         .clone()
         .as_builder()
         // .smt_root_hash(new_smt_hash.into())
-        .member_count(16u32.pack())
+        .buyer_count(16u32.pack())
         .build();
 
     let tx = build_account_book(
@@ -399,19 +399,19 @@ fn test_simple_withdrawal_suc() {
 
     // 计算分账
     let ratios = [20, 30, 30, 20];
-    let members = [7, 15];
+    let buyers = [7, 15];
     let spore_level = 1;
-    let all_income = 300000u128;
+    let total_income = 300000u128;
     let old_amount = Some(10u128);
 
     let new_amount: u128 = old_amount.unwrap_or(0)
-        + all_income * ratios[spore_level + 2] as u128 / 100 / members[spore_level] as u128;
+        + total_income * ratios[spore_level + 2] as u128 / 100 / buyers[spore_level] as u128;
 
     println!(
         "== aic: {}, ra: {}, num: {}, le: {}",
-        all_income,
+        total_income,
         ratios[spore_level + 2],
-        members[spore_level],
+        buyers[spore_level],
         spore_level
     );
     println!("== new amount: {}", new_amount);
@@ -433,14 +433,14 @@ fn test_simple_withdrawal_suc() {
     let account_book_cell_data = def_account_book_cell_data(&mut context)
         .as_builder()
         .profit_distribution_ratio(ratios.pack())
-        .profit_distribution_number(members.pack())
+        .profit_distribution_number(buyers.pack())
         .smt_root_hash(old_hash.into())
         .build();
     let account_book_data = def_account_book_data(&mut context)
         .as_builder()
         .level(2.into())
         .cluster_id(cluster_id.clone().into())
-        .all_income_udt(all_income.pack())
+        .total_income_udt(total_income.pack())
         .proof(proof.pack())
         .withdrawn_udt({
             Uint128Opt::new_builder()

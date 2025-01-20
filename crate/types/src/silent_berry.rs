@@ -1394,7 +1394,7 @@ impl ::core::fmt::Display for AccountBookData {
         write!(f, ", {}: {}", "cluster_id", self.cluster_id())?;
         write!(f, ", {}: {}", "level", self.level())?;
         write!(f, ", {}: {}", "proof", self.proof())?;
-        write!(f, ", {}: {}", "all_income_udt", self.all_income_udt())?;
+        write!(f, ", {}: {}", "total_income_udt", self.total_income_udt())?;
         write!(f, ", {}: {}", "withdrawn_udt", self.withdrawn_udt())?;
         let extra_count = self.count_extra_fields();
         if extra_count != 0 {
@@ -1486,7 +1486,7 @@ impl AccountBookData {
         let end = molecule::unpack_number(&slice[36..]) as usize;
         Bytes::new_unchecked(self.0.slice(start..end))
     }
-    pub fn all_income_udt(&self) -> Uint128 {
+    pub fn total_income_udt(&self) -> Uint128 {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[36..]) as usize;
         let end = molecule::unpack_number(&slice[40..]) as usize;
@@ -1537,7 +1537,7 @@ impl molecule::prelude::Entity for AccountBookData {
             .cluster_id(self.cluster_id())
             .level(self.level())
             .proof(self.proof())
-            .all_income_udt(self.all_income_udt())
+            .total_income_udt(self.total_income_udt())
             .withdrawn_udt(self.withdrawn_udt())
     }
 }
@@ -1588,7 +1588,7 @@ impl<'r> ::core::fmt::Display for AccountBookDataReader<'r> {
         write!(f, ", {}: {}", "cluster_id", self.cluster_id())?;
         write!(f, ", {}: {}", "level", self.level())?;
         write!(f, ", {}: {}", "proof", self.proof())?;
-        write!(f, ", {}: {}", "all_income_udt", self.all_income_udt())?;
+        write!(f, ", {}: {}", "total_income_udt", self.total_income_udt())?;
         write!(f, ", {}: {}", "withdrawn_udt", self.withdrawn_udt())?;
         let extra_count = self.count_extra_fields();
         if extra_count != 0 {
@@ -1663,7 +1663,7 @@ impl<'r> AccountBookDataReader<'r> {
         let end = molecule::unpack_number(&slice[36..]) as usize;
         BytesReader::new_unchecked(&self.as_slice()[start..end])
     }
-    pub fn all_income_udt(&self) -> Uint128Reader<'r> {
+    pub fn total_income_udt(&self) -> Uint128Reader<'r> {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[36..]) as usize;
         let end = molecule::unpack_number(&slice[40..]) as usize;
@@ -1749,7 +1749,7 @@ pub struct AccountBookDataBuilder {
     pub(crate) cluster_id: Byte32,
     pub(crate) level: Byte,
     pub(crate) proof: Bytes,
-    pub(crate) all_income_udt: Uint128,
+    pub(crate) total_income_udt: Uint128,
     pub(crate) withdrawn_udt: Uint128Opt,
 }
 impl AccountBookDataBuilder {
@@ -1786,8 +1786,8 @@ impl AccountBookDataBuilder {
         self.proof = v;
         self
     }
-    pub fn all_income_udt(mut self, v: Uint128) -> Self {
-        self.all_income_udt = v;
+    pub fn total_income_udt(mut self, v: Uint128) -> Self {
+        self.total_income_udt = v;
         self
     }
     pub fn withdrawn_udt(mut self, v: Uint128Opt) -> Self {
@@ -1808,7 +1808,7 @@ impl molecule::prelude::Builder for AccountBookDataBuilder {
             + self.cluster_id.as_slice().len()
             + self.level.as_slice().len()
             + self.proof.as_slice().len()
-            + self.all_income_udt.as_slice().len()
+            + self.total_income_udt.as_slice().len()
             + self.withdrawn_udt.as_slice().len()
     }
     fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
@@ -1831,7 +1831,7 @@ impl molecule::prelude::Builder for AccountBookDataBuilder {
         offsets.push(total_size);
         total_size += self.proof.as_slice().len();
         offsets.push(total_size);
-        total_size += self.all_income_udt.as_slice().len();
+        total_size += self.total_income_udt.as_slice().len();
         offsets.push(total_size);
         total_size += self.withdrawn_udt.as_slice().len();
         writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
@@ -1846,7 +1846,7 @@ impl molecule::prelude::Builder for AccountBookDataBuilder {
         writer.write_all(self.cluster_id.as_slice())?;
         writer.write_all(self.level.as_slice())?;
         writer.write_all(self.proof.as_slice())?;
-        writer.write_all(self.all_income_udt.as_slice())?;
+        writer.write_all(self.total_income_udt.as_slice())?;
         writer.write_all(self.withdrawn_udt.as_slice())?;
         Ok(())
     }
@@ -1877,7 +1877,7 @@ impl ::core::fmt::Display for AccountBookCellData {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         write!(f, "{} {{ ", Self::NAME)?;
         write!(f, "{}: {}", "smt_root_hash", self.smt_root_hash())?;
-        write!(f, ", {}: {}", "member_count", self.member_count())?;
+        write!(f, ", {}: {}", "buyer_count", self.buyer_count())?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
         write!(f, ", {}: {}", "auther_id", self.auther_id())?;
         write!(f, ", {}: {}", "platform_id", self.platform_id())?;
@@ -1940,7 +1940,7 @@ impl AccountBookCellData {
         let end = molecule::unpack_number(&slice[8..]) as usize;
         Byte32::new_unchecked(self.0.slice(start..end))
     }
-    pub fn member_count(&self) -> Uint32 {
+    pub fn buyer_count(&self) -> Uint32 {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[8..]) as usize;
         let end = molecule::unpack_number(&slice[12..]) as usize;
@@ -2014,7 +2014,7 @@ impl molecule::prelude::Entity for AccountBookCellData {
     fn as_builder(self) -> Self::Builder {
         Self::new_builder()
             .smt_root_hash(self.smt_root_hash())
-            .member_count(self.member_count())
+            .buyer_count(self.buyer_count())
             .owner_script_hash(self.owner_script_hash())
             .auther_id(self.auther_id())
             .platform_id(self.platform_id())
@@ -2043,7 +2043,7 @@ impl<'r> ::core::fmt::Display for AccountBookCellDataReader<'r> {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         write!(f, "{} {{ ", Self::NAME)?;
         write!(f, "{}: {}", "smt_root_hash", self.smt_root_hash())?;
-        write!(f, ", {}: {}", "member_count", self.member_count())?;
+        write!(f, ", {}: {}", "buyer_count", self.buyer_count())?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
         write!(f, ", {}: {}", "auther_id", self.auther_id())?;
         write!(f, ", {}: {}", "platform_id", self.platform_id())?;
@@ -2091,7 +2091,7 @@ impl<'r> AccountBookCellDataReader<'r> {
         let end = molecule::unpack_number(&slice[8..]) as usize;
         Byte32Reader::new_unchecked(&self.as_slice()[start..end])
     }
-    pub fn member_count(&self) -> Uint32Reader<'r> {
+    pub fn buyer_count(&self) -> Uint32Reader<'r> {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[8..]) as usize;
         let end = molecule::unpack_number(&slice[12..]) as usize;
@@ -2198,7 +2198,7 @@ impl<'r> molecule::prelude::Reader<'r> for AccountBookCellDataReader<'r> {
 #[derive(Clone, Debug, Default)]
 pub struct AccountBookCellDataBuilder {
     pub(crate) smt_root_hash: Byte32,
-    pub(crate) member_count: Uint32,
+    pub(crate) buyer_count: Uint32,
     pub(crate) owner_script_hash: Byte32,
     pub(crate) auther_id: Byte32,
     pub(crate) platform_id: Byte32,
@@ -2212,8 +2212,8 @@ impl AccountBookCellDataBuilder {
         self.smt_root_hash = v;
         self
     }
-    pub fn member_count(mut self, v: Uint32) -> Self {
-        self.member_count = v;
+    pub fn buyer_count(mut self, v: Uint32) -> Self {
+        self.buyer_count = v;
         self
     }
     pub fn owner_script_hash(mut self, v: Byte32) -> Self {
@@ -2247,7 +2247,7 @@ impl molecule::prelude::Builder for AccountBookCellDataBuilder {
     fn expected_length(&self) -> usize {
         molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1)
             + self.smt_root_hash.as_slice().len()
-            + self.member_count.as_slice().len()
+            + self.buyer_count.as_slice().len()
             + self.owner_script_hash.as_slice().len()
             + self.auther_id.as_slice().len()
             + self.platform_id.as_slice().len()
@@ -2261,7 +2261,7 @@ impl molecule::prelude::Builder for AccountBookCellDataBuilder {
         offsets.push(total_size);
         total_size += self.smt_root_hash.as_slice().len();
         offsets.push(total_size);
-        total_size += self.member_count.as_slice().len();
+        total_size += self.buyer_count.as_slice().len();
         offsets.push(total_size);
         total_size += self.owner_script_hash.as_slice().len();
         offsets.push(total_size);
@@ -2279,7 +2279,7 @@ impl molecule::prelude::Builder for AccountBookCellDataBuilder {
             writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
         }
         writer.write_all(self.smt_root_hash.as_slice())?;
-        writer.write_all(self.member_count.as_slice())?;
+        writer.write_all(self.buyer_count.as_slice())?;
         writer.write_all(self.owner_script_hash.as_slice())?;
         writer.write_all(self.auther_id.as_slice())?;
         writer.write_all(self.platform_id.as_slice())?;

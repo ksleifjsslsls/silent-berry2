@@ -158,7 +158,7 @@ pub fn build_account_book_script(
     let args = ckb_hash(
         data.as_builder()
             .proof(Default::default())
-            .all_income_udt(0.pack())
+            .total_income_udt(0.pack())
             .withdrawn_udt(Uint128Opt::new_builder().set(None).build())
             .build()
             .as_slice(),
@@ -336,7 +336,7 @@ pub fn update_accountbook(
     let sport_id: Hash = get_spore_id(&tx).into();
 
     let account_balance = smt.get_total();
-    let total_income = smt.get_all_income();
+    let total_income = smt.get_total_income();
 
     smt.update(SmtKey::AccountBalance, account_balance + price);
     smt.update(SmtKey::TotalIncome, total_income + price);
@@ -387,7 +387,7 @@ pub fn update_accountbook(
     let abd = AccountBookData::new_unchecked(witness.output_type().to_opt().unwrap().unpack())
         .as_builder()
         .proof(smt_proof.pack())
-        .all_income_udt((total_income + price).pack())
+        .total_income_udt((total_income + price).pack())
         .build();
     let witness = witness
         .as_builder()
