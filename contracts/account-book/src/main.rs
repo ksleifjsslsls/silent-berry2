@@ -13,7 +13,6 @@ use ckb_std::{
     high_level::{load_cell_lock, load_cell_type_hash, load_script},
     log,
 };
-use core::panic;
 pub use types::error::SilentBerryError as Error;
 use types::{AccountBookCellData, AccountBookData, Uint128Opt};
 use utils::{Hash, UDTInfo};
@@ -23,6 +22,9 @@ mod selling;
 
 #[path = "withdrawal.rs"]
 mod withdrawal;
+
+#[path = "creation.rs"]
+mod creation;
 
 fn load_verified_data() -> Result<AccountBookData, Error> {
     let args = load_script()?.args().raw_data();
@@ -174,7 +176,7 @@ fn check_input_type_proxy_lock(
         }
     }
     let input_amount = input_amount.ok_or_else(|| {
-        log::error!("Multiple input_type_proxy_locks not found in Inputs");
+        log::error!("The input_type_proxy_locks not found in Inputs");
         Error::TxStructure
     })?;
 
@@ -202,17 +204,11 @@ fn check_input_type_proxy_lock(
     Ok((input_amount, output_amount))
 }
 
-fn creation(_witness_data: AccountBookData) -> Result<(), Error> {
-    panic!("Unsuppore");
-
-    // 检查分账用户数量和用户等级
-}
-
 fn program_entry2() -> Result<(), Error> {
     let witness_data = load_verified_data()?;
 
     if is_creation()? {
-        creation(witness_data)
+        creation::creation(witness_data)
     } else if is_selling(&witness_data)? {
         selling::selling(witness_data)
     } else {

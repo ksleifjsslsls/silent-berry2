@@ -335,7 +335,7 @@ pub fn update_accountbook(
 
     let sport_id: Hash = get_spore_id(&tx).into();
 
-    let account_balance = smt.get_total();
+    let account_balance = smt.get_account_balance();
     let total_income = smt.get_total_income();
 
     smt.update(SmtKey::AccountBalance, account_balance + price);

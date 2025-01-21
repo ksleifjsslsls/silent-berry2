@@ -36,6 +36,14 @@ impl AccountBook {
 }
 
 impl AccountBook {
+    pub fn new_empty() -> Self {
+        let mut smt: AccountBook = Default::default();
+        smt.update(SmtKey::TotalIncome, 0);
+        smt.update(SmtKey::AccountBalance, 0);
+
+        smt
+    }
+
     pub fn new_test() -> Self {
         let mut smt: AccountBook = Default::default();
 
@@ -69,7 +77,7 @@ impl AccountBook {
         self.bk_items.get(&k).unwrap().clone().price
     }
 
-    pub fn get_total(&self) -> u128 {
+    pub fn get_account_balance(&self) -> u128 {
         self.get_item(SmtKey::AccountBalance)
     }
 
@@ -105,14 +113,14 @@ fn test_smt() {
 
     let proof = smt.proof(k.clone());
     let root_hash_1 = smt.root_hash();
-    let total_1 = smt.get_total();
+    let total_1 = smt.get_account_balance();
 
     smt.update(k.clone(), 200);
     let root_hash_2 = smt.root_hash();
 
     smt.update(SmtKey::AccountBalance, 79800);
     let root_hash_3 = smt.root_hash();
-    let total_3 = smt.get_total();
+    let total_3 = smt.get_account_balance();
 
     let cproof = utils::AccountBookProof::new(proof);
 
@@ -130,4 +138,37 @@ fn test_smt() {
     assert!(cproof
         .verify(root_hash_3, total_income, total_3, (k.clone(), Some(200)))
         .unwrap());
+}
+
+#[test]
+fn test_empty_smt() {
+    let smt = AccountBook::new_empty();
+    let smt_root_hash = smt.root_hash();
+    assert!(smt_root_hash == utils::SMT_ROOT_HASH_INITIAL);
+
+    let proof = smt.proof(SmtKey::Auther);
+
+    let cproof = utils::AccountBookProof::new(proof);
+    let ret = cproof
+        .clone()
+        .verify(smt_root_hash.clone(), 0, 0, (SmtKey::Auther, None))
+        .expect("Verify SMT Hash");
+    assert!(ret);
+    let ret = cproof
+        .clone()
+        .verify(smt_root_hash.clone(), 0, 0, (SmtKey::Auther, Some(0)))
+        .expect("Verify SMT Hash");
+    assert!(!ret);
+    cproof
+        .clone()
+        .verify(smt_root_hash.clone(), 0, 0, (SmtKey::Platform, None))
+        .unwrap_err();
+
+    let proof = smt.proof(SmtKey::Platform);
+    let cproof = utils::AccountBookProof::new(proof);
+    let ret = cproof
+        .clone()
+        .verify(smt_root_hash.clone(), 0, 0, (SmtKey::Platform, None))
+        .expect("Verify SMT Hash");
+    assert!(ret);
 }

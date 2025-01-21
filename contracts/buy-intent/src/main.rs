@@ -93,9 +93,9 @@ fn load_verified_data(is_input: bool) -> Result<(BuyIntentData, Hash), Error> {
     .raw_data();
 
     types::BuyIntentDataReader::verify(witness.to_vec().as_slice(), false)?;
-    let data = BuyIntentData::new_unchecked(witness);
+    let witness_data = BuyIntentData::new_unchecked(witness);
 
-    let hash = Hash::ckb_hash(data.as_slice());
+    let hash = Hash::ckb_hash(witness_data.as_slice());
     let intent_data_hash: Hash = args[utils::HASH_SIZE..].try_into()?;
 
     if hash != intent_data_hash {
@@ -103,7 +103,7 @@ fn load_verified_data(is_input: bool) -> Result<(BuyIntentData, Hash), Error> {
         return Err(Error::VerifiedData);
     }
 
-    Ok((data, args[..utils::HASH_SIZE].try_into()?))
+    Ok((witness_data, args[..utils::HASH_SIZE].try_into()?))
 }
 
 fn check_input_dob_selling(dob_selling_hash: Hash) -> Result<(), Error> {
@@ -161,24 +161,24 @@ fn check_account_book(account_book_hash: Hash, price: u128) -> Result<(), Error>
 
 fn program_entry2() -> Result<(), Error> {
     let is_input = is_input()?;
-    let (data, accountbook_hash) = load_verified_data(is_input)?;
+    let (witness_data, accountbook_hash) = load_verified_data(is_input)?;
 
     // Check xUDT Script Hash
-    let xudt_script_hash: Hash = data.xudt_script_hash().into();
+    let xudt_script_hash: Hash = witness_data.xudt_script_hash().into();
 
     if is_input {
-        let ret = check_account_book(accountbook_hash, data.price().unpack());
+        let ret = check_account_book(accountbook_hash, witness_data.price().unpack());
         if ret.is_ok() {
-            check_input_dob_selling(data.dob_selling_script_hash().into())?;
+            check_input_dob_selling(witness_data.dob_selling_script_hash().into())?;
             Ok(())
         } else {
             let since = load_input_since(0, Source::GroupInput)?;
-            let expire_since: u64 = data.expire_since().unpack();
+            let expire_since: u64 = witness_data.expire_since().unpack();
             if since < expire_since {
                 return ret;
             }
 
-            let owner_script_hash: Hash = data.owner_script_hash().into();
+            let owner_script_hash: Hash = witness_data.owner_script_hash().into();
             let lock_script_hash = load_cell_lock_hash(1, Source::Output)?;
             if owner_script_hash != lock_script_hash {
                 log::error!("Revocation failed, not found owner in Output 1");
@@ -190,7 +190,7 @@ fn program_entry2() -> Result<(), Error> {
     } else {
         let dob_selling = ckb_std::high_level::load_cell_lock_hash(1, Source::Output)?;
 
-        if dob_selling != data.dob_selling_script_hash().as_slice() {
+        if dob_selling != witness_data.dob_selling_script_hash().as_slice() {
             log::error!("Dob Selling Script Hash failed");
             return Err(Error::CheckScript);
         }
@@ -215,7 +215,7 @@ fn program_entry2() -> Result<(), Error> {
             return Err(Error::CheckXUDT);
         }
 
-        let price: u128 = data.price().unpack();
+        let price: u128 = witness_data.price().unpack();
         if udt_info.outputs[1].0 != price {
             log::error!(
                 "Incorrect xUDT payment: Need: {}, Actually: {}",
@@ -227,11 +227,16 @@ fn program_entry2() -> Result<(), Error> {
 
         let capacity = load_cell_capacity(2, Source::Output)?;
 
-        let buy_intent_capacity =
-            u64::from_le_bytes(data.min_capacity().as_slice().try_into().map_err(|e| {
-                log::error!("Parse BuyIntentData failed, {:?}", e);
-                Error::Unknow
-            })?);
+        let buy_intent_capacity = u64::from_le_bytes(
+            witness_data
+                .min_capacity()
+                .as_slice()
+                .try_into()
+                .map_err(|e| {
+                    log::error!("Parse BuyIntentData failed, {:?}", e);
+                    Error::Unknow
+                })?,
+        );
 
         if capacity > buy_intent_capacity {
             log::error!(

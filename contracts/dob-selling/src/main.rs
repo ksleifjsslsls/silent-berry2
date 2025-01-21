@@ -40,9 +40,9 @@ fn load_verified_data() -> Result<DobSellingData, Error> {
         .raw_data();
 
     types::DobSellingDataReader::verify(witness.to_vec().as_slice(), false)?;
-    let data = DobSellingData::new_unchecked(witness);
+    let witness_data = DobSellingData::new_unchecked(witness);
 
-    let hash = Hash::ckb_hash(data.as_slice());
+    let hash = Hash::ckb_hash(witness_data.as_slice());
     let intent_data_hash: Hash = args.try_into()?;
 
     if hash != intent_data_hash {
@@ -50,7 +50,7 @@ fn load_verified_data() -> Result<DobSellingData, Error> {
         return Err(Error::VerifiedData);
     }
 
-    Ok(data)
+    Ok(witness_data)
 }
 
 fn check_spore_data(hash: Hash) -> Result<(), Error> {
@@ -88,9 +88,9 @@ fn check_buy_intent_code_hash(hash: Hash) -> Result<(), Error> {
     Ok(())
 }
 
-fn revocation(data: DobSellingData) -> Result<(), Error> {
+fn revocation(witness_data: DobSellingData) -> Result<(), Error> {
     let hash = load_cell_lock_hash(0, Source::Output)?;
-    let owner_script_hash: Hash = data.owner_script_hash().into();
+    let owner_script_hash: Hash = witness_data.owner_script_hash().into();
     if owner_script_hash != hash {
         log::error!("Revocation failed, owner hash");
         return Err(Error::CheckScript);
@@ -103,7 +103,7 @@ fn revocation(data: DobSellingData) -> Result<(), Error> {
         return Err(Error::CheckXUDT);
     }
 
-    let buy_intent_code_hash: Hash = data.buy_intent_code_hash().into();
+    let buy_intent_code_hash: Hash = witness_data.buy_intent_code_hash().into();
     let lock_code_hash: Hash = load_cell_type(1, Source::Input)?
         .ok_or_else(|| {
             log::error!("Input[1] type script is None");
@@ -120,13 +120,13 @@ fn revocation(data: DobSellingData) -> Result<(), Error> {
 }
 
 fn program_entry2() -> Result<(), Error> {
-    let data = load_verified_data()?;
-    let ret = check_spore_data(data.spore_data_hash().into());
+    let witness_data = load_verified_data()?;
+    let ret = check_spore_data(witness_data.spore_data_hash().into());
     if ret.is_err() && ret.unwrap_err() == Error::CheckScript {
-        revocation(data)?;
+        revocation(witness_data)?;
     } else {
-        check_account_book(data.account_book_script_hash().into())?;
-        check_buy_intent_code_hash(data.buy_intent_code_hash().into())?;
+        check_account_book(witness_data.account_book_script_hash().into())?;
+        check_buy_intent_code_hash(witness_data.buy_intent_code_hash().into())?;
     }
     Ok(())
 }

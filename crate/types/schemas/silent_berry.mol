@@ -54,7 +54,6 @@ table AccountBookCellData {
     smt_root_hash: Byte32,
     buyer_count: Uint32,
 
-    owner_script_hash: Byte32,
     auther_id: Byte32,
     platform_id: Byte32,
     price: Uint128,

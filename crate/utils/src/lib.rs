@@ -5,7 +5,7 @@ extern crate alloc;
 #[cfg(feature = "smt")]
 mod account_book_proof;
 #[cfg(feature = "smt")]
-pub use account_book_proof::{AccountBookProof, SmtKey, H256};
+pub use account_book_proof::{AccountBookProof, SmtKey, H256, SMT_ROOT_HASH_INITIAL};
 #[cfg(all(feature = "smt", feature = "std"))]
 pub use account_book_proof::{SMTTree, SmtValue};
 

@@ -44,7 +44,11 @@ fn get_ratios(cell_data: &AccountBookCellData, level: u8) -> Result<Vec<u8>, Err
     let ratios = {
         let buf = cell_data.profit_distribution_ratio().raw_data().to_vec();
         if buf.len() != level as usize + 2 {
-            log::error!("The profit_distribution_ratio price in the account book is wrong, it needs: {}, actual: {}", level + 2, buf.len());
+            log::error!(
+                "The profit_distribution_ratio price in the account book is wrong, it needs: {}, actual: {}",
+                level + 2,
+                buf.len()
+            );
             return Err(Error::AccountBook);
         }
 
@@ -53,7 +57,11 @@ fn get_ratios(cell_data: &AccountBookCellData, level: u8) -> Result<Vec<u8>, Err
             num += *it as u64;
         }
         if num != 100 {
-            log::error!("The sum of profit_distribution_ratio({}, {:?}) is not 100, and withdrawal cannot be performed normally", num, &buf);
+            log::error!(
+                "The sum of profit_distribution_ratio({}, {:?}) is not 100, and withdrawal cannot be performed normally",
+                num,
+                &buf
+            );
             return Err(Error::AccountBook);
         }
         buf
@@ -105,7 +113,11 @@ fn get_total_withdrawn(
 
         let nums = cell_data.profit_distribution_number().raw_data().to_vec();
         if nums.len() != account_book_level as usize {
-            log::error!("The profit_distribution_num price in the account book is wrong, it needs: {}, actual: {}", account_book_level, nums.len());
+            log::error!(
+                "The profit_distribution_num price in the account book is wrong, it needs: {}, actual: {}",
+                account_book_level,
+                nums.len()
+            );
             return Err(Error::AccountBook);
         }
 

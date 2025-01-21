@@ -581,5 +581,73 @@ fn test_simple_withdrawal_suc() {
 
 #[test]
 fn create_account_book() {
+    let mut context = new_context();
+    let def_lock_script1 = build_always_suc_script(&mut context, &[]);
+
+    let ckb_cell = CellOutput::new_builder()
+        .capacity(1000u64.pack())
+        .lock(def_lock_script1.clone())
+        .build();
+
+    let smt = AccountBook::new_empty();
+
+    let account_book_data = def_account_book_data(&mut context)
+        .as_builder()
+        .level(5u8.into())
+        .proof(smt.proof(SmtKey::Auther).pack())
+        .build();
+    let account_book_cell_data = def_account_book_cell_data(&mut context)
+        .as_builder()
+        .buyer_count(0u32.pack())
+        .profit_distribution_ratio([20, 20, 20, 10, 10, 10, 10].pack())
+        .profit_distribution_number([10, 20, 30, 40, 50].pack())
+        .smt_root_hash(smt.root_hash().into())
+        .build();
+
+    let account_book_script =
+        build_account_book_script(&mut context, account_book_data.clone()).unwrap();
+
+    let accout_book_cell = CellOutput::new_builder()
+        .capacity(16u64.pack())
+        .lock(def_lock_script1.clone())
+        .type_(Some(account_book_script.clone()).pack())
+        .build();
+
+    let xudt_cell = {
+        let lock_script =
+            build_input_proxy_script(&mut context, account_book_script.calc_script_hash().into());
+        build_xudt_cell(&mut context, lock_script)
+    };
+
+    let ckb_cell_change = CellOutput::new_builder()
+        .capacity(20u64.pack())
+        .lock(def_lock_script1.clone())
+        .build();
+
+    let tx = TransactionBuilder::default()
+        .input(
+            CellInput::new_builder()
+                .previous_output(context.create_cell(ckb_cell, Default::default()))
+                .build(),
+        )
+        .output(xudt_cell)
+        .output_data(0u128.to_le_bytes().to_vec().pack())
+        .witness(Default::default())
+        .output(accout_book_cell)
+        .output_data(account_book_cell_data.as_bytes().pack())
+        .witness(
+            WitnessArgs::new_builder()
+                .output_type(Some(account_book_data.as_bytes()).pack())
+                .build()
+                .as_bytes()
+                .pack(),
+        )
+        .output(ckb_cell_change)
+        .output_data(Default::default())
+        .witness(Default::default())
+        .build();
     // Create Account book
+
+    let tx = context.complete_tx(tx);
+    verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 }
