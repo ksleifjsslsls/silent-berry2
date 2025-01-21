@@ -9,7 +9,6 @@ table BuyIntentData {
     change_script_hash: Byte32,
     expire_since: Uint64,
     owner_script_hash: Byte32,
-    change_location: Uint32,
 }
 
 # Witness
@@ -21,7 +20,6 @@ table WithdrawalIntentData {
 
     expire_since: Uint64,
     owner_script_hash: Byte32,
-    change_location: Uint32,
 }
 
 # Witness

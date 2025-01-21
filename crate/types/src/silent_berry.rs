@@ -48,7 +48,6 @@ impl ::core::fmt::Display for BuyIntentData {
         )?;
         write!(f, ", {}: {}", "expire_since", self.expire_since())?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
-        write!(f, ", {}: {}", "change_location", self.change_location())?;
         let extra_count = self.count_extra_fields();
         if extra_count != 0 {
             write!(f, ", .. ({} fields)", extra_count)?;
@@ -63,16 +62,16 @@ impl ::core::default::Default for BuyIntentData {
     }
 }
 impl BuyIntentData {
-    const DEFAULT_VALUE: [u8; 200] = [
-        200, 0, 0, 0, 36, 0, 0, 0, 68, 0, 0, 0, 100, 0, 0, 0, 116, 0, 0, 0, 124, 0, 0, 0, 156, 0,
-        0, 0, 164, 0, 0, 0, 196, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    const DEFAULT_VALUE: [u8; 192] = [
+        192, 0, 0, 0, 32, 0, 0, 0, 64, 0, 0, 0, 96, 0, 0, 0, 112, 0, 0, 0, 120, 0, 0, 0, 152, 0, 0,
+        0, 160, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
-    pub const FIELD_COUNT: usize = 8;
+    pub const FIELD_COUNT: usize = 7;
     pub fn total_size(&self) -> usize {
         molecule::unpack_number(self.as_slice()) as usize
     }
@@ -128,17 +127,11 @@ impl BuyIntentData {
     pub fn owner_script_hash(&self) -> Byte32 {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[28..]) as usize;
-        let end = molecule::unpack_number(&slice[32..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
-    }
-    pub fn change_location(&self) -> Uint32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[32..]) as usize;
         if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[36..]) as usize;
-            Uint32::new_unchecked(self.0.slice(start..end))
+            let end = molecule::unpack_number(&slice[32..]) as usize;
+            Byte32::new_unchecked(self.0.slice(start..end))
         } else {
-            Uint32::new_unchecked(self.0.slice(start..))
+            Byte32::new_unchecked(self.0.slice(start..))
         }
     }
     pub fn as_reader<'r>(&'r self) -> BuyIntentDataReader<'r> {
@@ -175,7 +168,6 @@ impl molecule::prelude::Entity for BuyIntentData {
             .change_script_hash(self.change_script_hash())
             .expire_since(self.expire_since())
             .owner_script_hash(self.owner_script_hash())
-            .change_location(self.change_location())
     }
 }
 #[derive(Clone, Copy)]
@@ -214,7 +206,6 @@ impl<'r> ::core::fmt::Display for BuyIntentDataReader<'r> {
         )?;
         write!(f, ", {}: {}", "expire_since", self.expire_since())?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
-        write!(f, ", {}: {}", "change_location", self.change_location())?;
         let extra_count = self.count_extra_fields();
         if extra_count != 0 {
             write!(f, ", .. ({} fields)", extra_count)?;
@@ -223,7 +214,7 @@ impl<'r> ::core::fmt::Display for BuyIntentDataReader<'r> {
     }
 }
 impl<'r> BuyIntentDataReader<'r> {
-    pub const FIELD_COUNT: usize = 8;
+    pub const FIELD_COUNT: usize = 7;
     pub fn total_size(&self) -> usize {
         molecule::unpack_number(self.as_slice()) as usize
     }
@@ -279,17 +270,11 @@ impl<'r> BuyIntentDataReader<'r> {
     pub fn owner_script_hash(&self) -> Byte32Reader<'r> {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[28..]) as usize;
-        let end = molecule::unpack_number(&slice[32..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-    }
-    pub fn change_location(&self) -> Uint32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[32..]) as usize;
         if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[36..]) as usize;
-            Uint32Reader::new_unchecked(&self.as_slice()[start..end])
+            let end = molecule::unpack_number(&slice[32..]) as usize;
+            Byte32Reader::new_unchecked(&self.as_slice()[start..end])
         } else {
-            Uint32Reader::new_unchecked(&self.as_slice()[start..])
+            Byte32Reader::new_unchecked(&self.as_slice()[start..])
         }
     }
 }
@@ -346,7 +331,6 @@ impl<'r> molecule::prelude::Reader<'r> for BuyIntentDataReader<'r> {
         Byte32Reader::verify(&slice[offsets[4]..offsets[5]], compatible)?;
         Uint64Reader::verify(&slice[offsets[5]..offsets[6]], compatible)?;
         Byte32Reader::verify(&slice[offsets[6]..offsets[7]], compatible)?;
-        Uint32Reader::verify(&slice[offsets[7]..offsets[8]], compatible)?;
         Ok(())
     }
 }
@@ -359,10 +343,9 @@ pub struct BuyIntentDataBuilder {
     pub(crate) change_script_hash: Byte32,
     pub(crate) expire_since: Uint64,
     pub(crate) owner_script_hash: Byte32,
-    pub(crate) change_location: Uint32,
 }
 impl BuyIntentDataBuilder {
-    pub const FIELD_COUNT: usize = 8;
+    pub const FIELD_COUNT: usize = 7;
     pub fn dob_selling_script_hash(mut self, v: Byte32) -> Self {
         self.dob_selling_script_hash = v;
         self
@@ -391,10 +374,6 @@ impl BuyIntentDataBuilder {
         self.owner_script_hash = v;
         self
     }
-    pub fn change_location(mut self, v: Uint32) -> Self {
-        self.change_location = v;
-        self
-    }
 }
 impl molecule::prelude::Builder for BuyIntentDataBuilder {
     type Entity = BuyIntentData;
@@ -408,7 +387,6 @@ impl molecule::prelude::Builder for BuyIntentDataBuilder {
             + self.change_script_hash.as_slice().len()
             + self.expire_since.as_slice().len()
             + self.owner_script_hash.as_slice().len()
-            + self.change_location.as_slice().len()
     }
     fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
         let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
@@ -427,8 +405,6 @@ impl molecule::prelude::Builder for BuyIntentDataBuilder {
         total_size += self.expire_since.as_slice().len();
         offsets.push(total_size);
         total_size += self.owner_script_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.change_location.as_slice().len();
         writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
         for offset in offsets.into_iter() {
             writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
@@ -440,7 +416,6 @@ impl molecule::prelude::Builder for BuyIntentDataBuilder {
         writer.write_all(self.change_script_hash.as_slice())?;
         writer.write_all(self.expire_since.as_slice())?;
         writer.write_all(self.owner_script_hash.as_slice())?;
-        writer.write_all(self.change_location.as_slice())?;
         Ok(())
     }
     fn build(&self) -> Self::Entity {
@@ -475,7 +450,6 @@ impl ::core::fmt::Display for WithdrawalIntentData {
         write!(f, ", {}: {}", "cluster_id", self.cluster_id())?;
         write!(f, ", {}: {}", "expire_since", self.expire_since())?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
-        write!(f, ", {}: {}", "change_location", self.change_location())?;
         let extra_count = self.count_extra_fields();
         if extra_count != 0 {
             write!(f, ", .. ({} fields)", extra_count)?;
@@ -490,15 +464,15 @@ impl ::core::default::Default for WithdrawalIntentData {
     }
 }
 impl WithdrawalIntentData {
-    const DEFAULT_VALUE: [u8; 173] = [
-        173, 0, 0, 0, 32, 0, 0, 0, 64, 0, 0, 0, 65, 0, 0, 0, 97, 0, 0, 0, 129, 0, 0, 0, 137, 0, 0,
-        0, 169, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    const DEFAULT_VALUE: [u8; 165] = [
+        165, 0, 0, 0, 28, 0, 0, 0, 60, 0, 0, 0, 61, 0, 0, 0, 93, 0, 0, 0, 125, 0, 0, 0, 133, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
-    pub const FIELD_COUNT: usize = 7;
+    pub const FIELD_COUNT: usize = 6;
     pub fn total_size(&self) -> usize {
         molecule::unpack_number(self.as_slice()) as usize
     }
@@ -548,17 +522,11 @@ impl WithdrawalIntentData {
     pub fn owner_script_hash(&self) -> Byte32 {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[24..]) as usize;
-        let end = molecule::unpack_number(&slice[28..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
-    }
-    pub fn change_location(&self) -> Uint32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[28..]) as usize;
         if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[32..]) as usize;
-            Uint32::new_unchecked(self.0.slice(start..end))
+            let end = molecule::unpack_number(&slice[28..]) as usize;
+            Byte32::new_unchecked(self.0.slice(start..end))
         } else {
-            Uint32::new_unchecked(self.0.slice(start..))
+            Byte32::new_unchecked(self.0.slice(start..))
         }
     }
     pub fn as_reader<'r>(&'r self) -> WithdrawalIntentDataReader<'r> {
@@ -594,7 +562,6 @@ impl molecule::prelude::Entity for WithdrawalIntentData {
             .cluster_id(self.cluster_id())
             .expire_since(self.expire_since())
             .owner_script_hash(self.owner_script_hash())
-            .change_location(self.change_location())
     }
 }
 #[derive(Clone, Copy)]
@@ -622,7 +589,6 @@ impl<'r> ::core::fmt::Display for WithdrawalIntentDataReader<'r> {
         write!(f, ", {}: {}", "cluster_id", self.cluster_id())?;
         write!(f, ", {}: {}", "expire_since", self.expire_since())?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
-        write!(f, ", {}: {}", "change_location", self.change_location())?;
         let extra_count = self.count_extra_fields();
         if extra_count != 0 {
             write!(f, ", .. ({} fields)", extra_count)?;
@@ -631,7 +597,7 @@ impl<'r> ::core::fmt::Display for WithdrawalIntentDataReader<'r> {
     }
 }
 impl<'r> WithdrawalIntentDataReader<'r> {
-    pub const FIELD_COUNT: usize = 7;
+    pub const FIELD_COUNT: usize = 6;
     pub fn total_size(&self) -> usize {
         molecule::unpack_number(self.as_slice()) as usize
     }
@@ -681,17 +647,11 @@ impl<'r> WithdrawalIntentDataReader<'r> {
     pub fn owner_script_hash(&self) -> Byte32Reader<'r> {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[24..]) as usize;
-        let end = molecule::unpack_number(&slice[28..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-    }
-    pub fn change_location(&self) -> Uint32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[28..]) as usize;
         if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[32..]) as usize;
-            Uint32Reader::new_unchecked(&self.as_slice()[start..end])
+            let end = molecule::unpack_number(&slice[28..]) as usize;
+            Byte32Reader::new_unchecked(&self.as_slice()[start..end])
         } else {
-            Uint32Reader::new_unchecked(&self.as_slice()[start..])
+            Byte32Reader::new_unchecked(&self.as_slice()[start..])
         }
     }
 }
@@ -747,7 +707,6 @@ impl<'r> molecule::prelude::Reader<'r> for WithdrawalIntentDataReader<'r> {
         Byte32Reader::verify(&slice[offsets[3]..offsets[4]], compatible)?;
         Uint64Reader::verify(&slice[offsets[4]..offsets[5]], compatible)?;
         Byte32Reader::verify(&slice[offsets[5]..offsets[6]], compatible)?;
-        Uint32Reader::verify(&slice[offsets[6]..offsets[7]], compatible)?;
         Ok(())
     }
 }
@@ -759,10 +718,9 @@ pub struct WithdrawalIntentDataBuilder {
     pub(crate) cluster_id: Byte32,
     pub(crate) expire_since: Uint64,
     pub(crate) owner_script_hash: Byte32,
-    pub(crate) change_location: Uint32,
 }
 impl WithdrawalIntentDataBuilder {
-    pub const FIELD_COUNT: usize = 7;
+    pub const FIELD_COUNT: usize = 6;
     pub fn xudt_script_hash(mut self, v: Byte32) -> Self {
         self.xudt_script_hash = v;
         self
@@ -787,10 +745,6 @@ impl WithdrawalIntentDataBuilder {
         self.owner_script_hash = v;
         self
     }
-    pub fn change_location(mut self, v: Uint32) -> Self {
-        self.change_location = v;
-        self
-    }
 }
 impl molecule::prelude::Builder for WithdrawalIntentDataBuilder {
     type Entity = WithdrawalIntentData;
@@ -803,7 +757,6 @@ impl molecule::prelude::Builder for WithdrawalIntentDataBuilder {
             + self.cluster_id.as_slice().len()
             + self.expire_since.as_slice().len()
             + self.owner_script_hash.as_slice().len()
-            + self.change_location.as_slice().len()
     }
     fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
         let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
@@ -820,8 +773,6 @@ impl molecule::prelude::Builder for WithdrawalIntentDataBuilder {
         total_size += self.expire_since.as_slice().len();
         offsets.push(total_size);
         total_size += self.owner_script_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.change_location.as_slice().len();
         writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
         for offset in offsets.into_iter() {
             writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
@@ -832,7 +783,6 @@ impl molecule::prelude::Builder for WithdrawalIntentDataBuilder {
         writer.write_all(self.cluster_id.as_slice())?;
         writer.write_all(self.expire_since.as_slice())?;
         writer.write_all(self.owner_script_hash.as_slice())?;
-        writer.write_all(self.change_location.as_slice())?;
         Ok(())
     }
     fn build(&self) -> Self::Entity {

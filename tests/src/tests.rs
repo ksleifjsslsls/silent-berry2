@@ -580,6 +580,52 @@ fn test_simple_withdrawal_suc() {
 }
 
 #[test]
+fn test_revocation_withdrawal() {
+    let mut context = new_context();
+    let def_lock1 = build_always_suc_script(&mut context, &[1, 1, 1]);
+    let def_lock2 = build_always_suc_script(&mut context, &[2, 1, 1]);
+    let withdrawal_data = def_withdrawal_intent_data(&mut context)
+        .as_builder()
+        .expire_since(2000u64.pack())
+        .owner_script_hash(def_lock2.calc_script_hash())
+        .build();
+    let withdrawal_script =
+        build_withdrawal_intent_script(&mut context, &withdrawal_data, [0u8; 32].into());
+
+    let withdrawal_cell = CellOutput::new_builder()
+        .capacity(1000u64.pack())
+        .lock(def_lock1)
+        .type_(withdrawal_script.pack())
+        .build();
+
+    let output_cell = CellOutput::new_builder()
+        .capacity(900u64.pack())
+        .lock(def_lock2)
+        .build();
+
+    let tx = TransactionBuilder::default()
+        .input(
+            CellInput::new_builder()
+                .previous_output(context.create_cell(withdrawal_cell, Default::default()))
+                .since(2001u64.pack())
+                .build(),
+        )
+        .output(output_cell)
+        .output_data(Default::default())
+        .witness(
+            WitnessArgs::new_builder()
+                .input_type(Some(withdrawal_data.as_bytes()).pack())
+                .build()
+                .as_bytes()
+                .pack(),
+        )
+        .build();
+
+    let tx = context.complete_tx(tx);
+    verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
+}
+
+#[test]
 fn create_account_book() {
     let mut context = new_context();
     let def_lock_script1 = build_always_suc_script(&mut context, &[]);

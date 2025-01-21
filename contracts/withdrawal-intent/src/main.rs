@@ -11,13 +11,13 @@ ckb_std::default_alloc!();
 
 use ckb_std::{
     ckb_constants::Source,
-    ckb_types::prelude::{Entity, Reader},
+    ckb_types::prelude::{Entity, Reader, Unpack},
     error::SysError,
     high_level::{
-        load_cell_capacity, load_cell_data, load_cell_type, load_cell_type_hash, load_script,
-        load_witness_args, QueryIter,
+        load_cell_capacity, load_cell_data, load_cell_lock_hash, load_cell_type,
+        load_cell_type_hash, load_input_since, load_script, load_witness_args, QueryIter,
     },
-    log::{self},
+    log,
 };
 use spore_types::spore::{SporeData, SporeDataReader};
 use types::error::SilentBerryError as Error;
@@ -152,7 +152,7 @@ fn check_spore(witness_data: &WithdrawalIntentData) -> Result<(), Error> {
 
 fn check_account_book(hash: Hash) -> Result<(), Error> {
     if !QueryIter::new(load_cell_type_hash, Source::Input).any(|script_hash| hash == script_hash) {
-        log::error!("Account Book not found in Input");
+        // log::error!("Account Book not found in Input");
         return Err(Error::TxStructure);
     }
     if !QueryIter::new(load_cell_type_hash, Source::Output).any(|script_hash| hash == script_hash) {
@@ -168,11 +168,31 @@ fn program_entry2() -> Result<(), Error> {
     let (witness_data, accountbook_hash) = load_verified_data(is_input)?;
 
     if is_input {
-        check_account_book(accountbook_hash)?;
+        let ret = check_account_book(accountbook_hash);
+        if ret.is_ok() {
+            let xudt_script_hash: Hash = witness_data.xudt_script_hash().into();
+            let _udt_info = UDTInfo::new(xudt_script_hash)?;
+            Ok(())
+        } else if ret == Err(Error::TxStructure) {
+            let since = load_input_since(0, Source::GroupInput)?;
+            let expire_since: u64 = witness_data.expire_since().unpack();
 
-        let xudt_script_hash: Hash = witness_data.xudt_script_hash().into();
-        let _udt_info = UDTInfo::new(xudt_script_hash)?;
-        Ok(())
+            if since < expire_since {
+                return ret;
+            }
+
+            let owner_script_hash: Hash = witness_data.owner_script_hash().into();
+            let lock_script_hash = load_cell_lock_hash(0, Source::Output)?;
+            if owner_script_hash != lock_script_hash {
+                log::error!("Revocation failed, not found owner in Output 0");
+                return Err(Error::CheckScript);
+            }
+
+            log::info!("--- rev ---");
+            Ok(())
+        } else {
+            ret
+        }
     } else {
         // check spore
         check_spore(&witness_data)?;
