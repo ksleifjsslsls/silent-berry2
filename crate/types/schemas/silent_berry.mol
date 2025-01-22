@@ -7,6 +7,7 @@ table BuyIntentData {
     price: Uint128,
     min_capacity: Uint64,
     change_script_hash: Byte32,
+
     expire_since: Uint64,
     owner_script_hash: Byte32,
 }
@@ -14,6 +15,7 @@ table BuyIntentData {
 # Witness
 table WithdrawalIntentData {
     xudt_script_hash: Byte32,
+    spore_code_hash: Byte32,
     spore_level: byte,
     spore_id: Byte32,
     cluster_id: Byte32,

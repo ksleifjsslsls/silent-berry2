@@ -106,6 +106,15 @@ impl TryFrom<spore_types::spore::BytesOpt> for Hash {
     }
 }
 
+impl PartialEq<Option<Self>> for Hash {
+    fn eq(&self, other: &Option<Self>) -> bool {
+        if let Some(other) = other {
+            self.0 == other.0
+        } else {
+            false
+        }
+    }
+}
 impl PartialEq<&[u8]> for Hash {
     fn eq(&self, other: &&[u8]) -> bool {
         &self.0 == other
@@ -128,6 +137,15 @@ impl PartialEq<Option<[u8; 32]>> for Hash {
 impl PartialEq<types::blockchain::Byte32> for Hash {
     fn eq(&self, other: &types::blockchain::Byte32) -> bool {
         self.0 == other.raw_data().to_vec().as_slice()
+    }
+}
+impl PartialEq<Option<types::blockchain::Byte32>> for Hash {
+    fn eq(&self, other: &Option<types::blockchain::Byte32>) -> bool {
+        if let Some(other) = other {
+            self.0 == other.raw_data().to_vec().as_slice()
+        } else {
+            false
+        }
     }
 }
 

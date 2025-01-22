@@ -19,7 +19,8 @@ use alloc::vec::Vec;
 use ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::{Entity, Reader},
-    high_level::{load_cell_data, load_cell_lock, load_cell_type, load_witness_args},
+    error::SysError,
+    high_level::{load_cell_data, load_cell_lock, load_cell_type, load_witness_args, QueryIter},
     log,
 };
 use types::{error::SilentBerryError as Error, AccountBookCellData};
@@ -27,45 +28,66 @@ use types::{AccountBookData, WithdrawalIntentData};
 
 pub const MAX_CELLS_LEN: usize = 256;
 
-pub fn get_index_by_code_hash(
-    hash: Hash,
-    is_lock: bool,
+pub fn get_indexs<T, F1: Fn(usize, Source) -> Result<T, SysError>, F2: Fn(T) -> bool>(
+    f1: F1,
+    f2: F2,
     source: Source,
-) -> Result<Vec<usize>, Error> {
-    let mut indexs = Vec::new();
-    let mut index = 0;
-
-    while index < MAX_CELLS_LEN {
-        let ret = if is_lock {
-            load_cell_lock(index, source).map(Some)
-        } else {
-            load_cell_type(index, source)
-        };
-        match ret {
-            Ok(script) => {
-                if script.is_none() {
-                    continue;
+) -> Vec<usize> {
+    QueryIter::new(f1, source)
+        .enumerate()
+        .filter_map(
+            |(index, code_hash)| {
+                if f2(code_hash) {
+                    Some(index)
+                } else {
+                    None
                 }
-                if hash == script.unwrap().code_hash() {
-                    indexs.push(index);
-                }
-            }
-            Err(ckb_std::error::SysError::IndexOutOfBound) => {
-                break;
-            }
-            Err(e) => {
-                log::error!("Load cell script failed: {:?}", e);
-                return Err(e.into());
-            }
-        }
-        index += 1;
+            },
+        )
+        .collect()
+}
+
+pub fn load_lock_code_hash(index: usize, source: Source) -> Result<Hash, SysError> {
+    let s = load_cell_lock(index, source)?;
+    Ok(s.code_hash().into())
+}
+pub fn load_type_code_hash(index: usize, source: Source) -> Result<Option<Hash>, SysError> {
+    let s = load_cell_type(index, source)?;
+    if let Some(s) = s {
+        Ok(Some(s.code_hash().into()))
+    } else {
+        Ok(None)
     }
-    if index == MAX_CELLS_LEN {
-        log::error!("Too many cells (limit: {})", crate::MAX_CELLS_LEN);
-        return Err(Error::Unknow);
+}
+
+pub fn is_not_out_of_bound<T: core::cmp::PartialEq>(r: Result<T, SysError>) -> Result<bool, Error> {
+    if r.is_ok() {
+        Ok(true)
+    } else if r == Err(SysError::IndexOutOfBound) {
+        Ok(false)
+    } else {
+        Err(Error::SysError)
+    }
+}
+
+pub fn load_args_to_hash() -> Result<Vec<Hash>, Error> {
+    let args = ckb_std::high_level::load_script()?
+        .args()
+        .raw_data()
+        .to_vec();
+    if args.len() % HASH_SIZE != 0 {
+        log::error!("Args len {} % {} != 0", args.len(), HASH_SIZE,);
+        return Err(Error::VerifiedData);
     }
 
-    Ok(indexs)
+    Ok(args
+        .chunks_exact(HASH_SIZE)
+        .map(|chunk| {
+            // The length has been determined above, so there shouldn't be any problems here.
+            let c: [u8; 32] = chunk.try_into().unwrap();
+            c.into()
+        })
+        .collect())
 }
 
 pub fn get_spore_level(spore_data: &spore_types::spore::SporeData) -> Result<u8, Error> {

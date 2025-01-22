@@ -37,6 +37,7 @@ fn def_buy_intent_data(context: &mut Context, dob_data: &DobSellingData) -> BuyI
 fn def_withdrawal_intent_data(context: &mut Context) -> WithdrawalIntentData {
     WithdrawalIntentData::new_builder()
         .xudt_script_hash(get_opt_script_hash(&build_xudt_script(context)).pack())
+        .spore_code_hash((*SporeCodeHash).pack())
         .spore_id([0u8; 32].pack())
         .cluster_id([0u8; 32].pack())
         .expire_since(1000u64.pack())
@@ -407,15 +408,6 @@ fn test_simple_withdrawal_suc() {
 
     let new_amount: u128 = old_amount.unwrap_or(0)
         + total_income * ratios[spore_level + 2] as u128 / 100 / buyers[spore_level] as u128;
-
-    println!(
-        "== aic: {}, ra: {}, num: {}, le: {}",
-        total_income,
-        ratios[spore_level + 2],
-        buyers[spore_level],
-        spore_level
-    );
-    println!("== new amount: {}", new_amount);
 
     let mut smt = AccountBook::new_test();
     if old_amount.is_some() {

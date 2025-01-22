@@ -12,41 +12,25 @@ ckb_std::default_alloc!();
 use ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::{Entity, Reader, Unpack},
-    error::SysError,
     high_level::{
         load_cell_capacity, load_cell_data, load_cell_lock_hash, load_cell_type,
-        load_cell_type_hash, load_input_since, load_script, load_witness_args, QueryIter,
+        load_cell_type_hash, load_input_since, QueryIter,
     },
     log,
 };
 use spore_types::spore::{SporeData, SporeDataReader};
 use types::error::SilentBerryError as Error;
 use types::WithdrawalIntentData;
-use utils::{Hash, UDTInfo};
+use utils::{is_not_out_of_bound, Hash, UDTInfo, HASH_SIZE};
 
 fn is_input() -> Result<bool, Error> {
-    let input = match load_cell_capacity(0, Source::GroupInput) {
-        Ok(_) => true,
-        Err(err) => {
-            if err == SysError::IndexOutOfBound {
-                false
-            } else {
-                log::error!("Load GroupInput Capacity failed: {:?}", err);
-                return Err(err.into());
-            }
-        }
-    };
-    let output = match load_cell_capacity(0, Source::GroupOutput) {
-        Ok(_) => true,
-        Err(err) => {
-            if err == SysError::IndexOutOfBound {
-                false
-            } else {
-                log::error!("Load GroupOutput Capacity failed: {:?}", err);
-                return Err(err.into());
-            }
-        }
-    };
+    let input = is_not_out_of_bound(load_cell_capacity(0, Source::GroupInput))?;
+    let output = is_not_out_of_bound(load_cell_capacity(0, Source::GroupOutput))?;
+    if input == output {
+        log::error!("Both Inputs and Outputs has But Intent");
+        return Err(Error::TxStructure);
+    }
+
     if load_cell_capacity(1, Source::GroupInput).is_ok() {
         log::error!("There can be only one GroupInput");
         return Err(Error::TxStructure);
@@ -56,20 +40,14 @@ fn is_input() -> Result<bool, Error> {
         return Err(Error::TxStructure);
     }
 
-    if input && !output {
-        Ok(true)
-    } else if !input && output {
-        Ok(false)
-    } else {
-        log::error!("Both Inputs and Outputs has But Intent");
-        Err(Error::TxStructure)
-    }
+    Ok(input)
 }
 
 fn load_verified_data(is_input: bool) -> Result<(WithdrawalIntentData, Hash), Error> {
-    let args = load_script()?.args().raw_data();
-    if args.len() != utils::HASH_SIZE * 2 {
-        log::error!("Args len is not {} {}", utils::HASH_SIZE * 2, args.len());
+    let args = utils::load_args_to_hash()?;
+    // Intent Hash | Account Book Script Hash
+    if args.len() != 2 {
+        log::error!("Two Hash({}) are needed here", HASH_SIZE);
         return Err(Error::VerifiedData);
     }
 
@@ -79,36 +57,47 @@ fn load_verified_data(is_input: bool) -> Result<(WithdrawalIntentData, Hash), Er
         Source::GroupOutput
     };
 
-    let witness = load_witness_args(0, source)?;
-    let witness = if is_input {
-        witness.input_type().to_opt()
-    } else {
-        witness.output_type().to_opt()
-    }
-    .ok_or_else(|| {
-        log::error!("load witnesses failed");
-        Error::TxStructure
-    })?
-    .raw_data();
-
-    types::WithdrawalIntentDataReader::verify(witness.to_vec().as_slice(), false)?;
-    let witness_data = WithdrawalIntentData::new_unchecked(witness);
-
-    let hash = Hash::ckb_hash(witness_data.as_slice());
-    let intent_data_hash: Hash = args[utils::HASH_SIZE..].try_into()?;
-
-    if hash != intent_data_hash {
+    let witness_data = utils::load_withdrawal_data(0, source, is_input)?;
+    if Hash::ckb_hash(witness_data.as_slice()) != args[1] {
         log::error!("Check intent data hash failed");
         return Err(Error::VerifiedData);
     }
 
-    Ok((witness_data, args[..utils::HASH_SIZE].try_into()?))
+    Ok((witness_data, args[0].clone()))
 }
 
 fn check_spore(witness_data: &WithdrawalIntentData) -> Result<(), Error> {
+    let spore_code_hash: Hash = witness_data.spore_code_hash().into();
+
     let spore_data = {
-        let spore_data1 = load_cell_data(0, Source::Input)?;
-        let spore_data2 = load_cell_data(0, Source::Output)?;
+        let spore_input_index = {
+            let indexs = utils::get_indexs(
+                utils::load_type_code_hash,
+                |hahs| spore_code_hash == hahs,
+                Source::Input,
+            );
+            if indexs.len() != 1 {
+                log::error!("Only one Spore allowed in inputs");
+                return Err(Error::TxStructure);
+            }
+            indexs[0]
+        };
+        let spore_data1 = load_cell_data(spore_input_index, Source::Input)?;
+
+        let spore_output_index = {
+            let indexs = utils::get_indexs(
+                utils::load_type_code_hash,
+                |hahs| spore_code_hash == hahs,
+                Source::Output,
+            );
+            if indexs.len() != 1 {
+                log::error!("Only one Spore allowed in outputs");
+                return Err(Error::TxStructure);
+            }
+            indexs[0]
+        };
+        let spore_data2 = load_cell_data(spore_output_index, Source::Output)?;
+
         if spore_data1 != spore_data2 {
             log::error!("Input and output sporedata are different");
             return Err(Error::Spore);
@@ -117,13 +106,14 @@ fn check_spore(witness_data: &WithdrawalIntentData) -> Result<(), Error> {
         SporeData::new_unchecked(spore_data1.into())
     };
 
+    // Check cluster ID
     let cluster_id: Hash = spore_data.cluster_id().try_into()?;
-    let cluster_id2: Hash = witness_data.cluster_id().into();
-    if cluster_id != cluster_id2 {
+    if cluster_id != witness_data.cluster_id() {
         log::error!("The cluster id in Spore is different from the one passed in");
         return Err(Error::Spore);
     }
 
+    // Check Spore ID
     let spore_id: Hash = load_cell_type(0, Source::Input)?
         .ok_or_else(|| {
             log::error!("Load Cell type scripe failed, Type is None");
@@ -131,12 +121,12 @@ fn check_spore(witness_data: &WithdrawalIntentData) -> Result<(), Error> {
         })?
         .args()
         .try_into()?;
-    let spore_id2: Hash = witness_data.spore_id().into();
-    if spore_id != spore_id2 {
+    if spore_id != witness_data.spore_id() {
         log::error!("The spore id in Spore is different from the one passed in");
         return Err(Error::Spore);
     }
 
+    // Check Spore Level
     let data_level: u8 = witness_data.spore_level().into();
     if data_level != utils::get_spore_level(&spore_data)? {
         log::error!(
@@ -175,20 +165,15 @@ fn program_entry2() -> Result<(), Error> {
             Ok(())
         } else if ret == Err(Error::TxStructure) {
             let since = load_input_since(0, Source::GroupInput)?;
-            let expire_since: u64 = witness_data.expire_since().unpack();
-
-            if since < expire_since {
+            if since < witness_data.expire_since().unpack() {
                 return ret;
             }
 
             let owner_script_hash: Hash = witness_data.owner_script_hash().into();
-            let lock_script_hash = load_cell_lock_hash(0, Source::Output)?;
-            if owner_script_hash != lock_script_hash {
+            if owner_script_hash != load_cell_lock_hash(0, Source::Output)? {
                 log::error!("Revocation failed, not found owner in Output 0");
                 return Err(Error::CheckScript);
             }
-
-            log::info!("--- rev ---");
             Ok(())
         } else {
             ret

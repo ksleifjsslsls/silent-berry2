@@ -14,7 +14,6 @@ ckb_std::default_alloc!();
 use ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::{Entity, Reader, Unpack},
-    error::SysError,
     high_level::{
         load_cell_capacity, load_cell_data, load_cell_lock_hash, load_cell_type_hash,
         load_input_since, load_script, load_witness_args, QueryIter,
@@ -23,31 +22,16 @@ use ckb_std::{
 };
 use types::error::SilentBerryError as Error;
 use types::{AccountBookCellData, BuyIntentData};
-use utils::Hash;
+use utils::{is_not_out_of_bound, Hash};
 
 fn is_input() -> Result<bool, Error> {
-    let input = match load_cell_capacity(0, Source::GroupInput) {
-        Ok(_) => true,
-        Err(err) => {
-            if err == SysError::IndexOutOfBound {
-                false
-            } else {
-                log::error!("Load GroupInput Capacity failed: {:?}", err);
-                return Err(err.into());
-            }
-        }
-    };
-    let output = match load_cell_capacity(0, Source::GroupOutput) {
-        Ok(_) => true,
-        Err(err) => {
-            if err == SysError::IndexOutOfBound {
-                false
-            } else {
-                log::error!("Load GroupOutput Capacity failed: {:?}", err);
-                return Err(err.into());
-            }
-        }
-    };
+    let input = is_not_out_of_bound(load_cell_capacity(0, Source::GroupInput))?;
+    let output = is_not_out_of_bound(load_cell_capacity(0, Source::GroupOutput))?;
+    if input == output {
+        log::error!("Both Inputs and Outputs has But Intent");
+        return Err(Error::TxStructure);
+    }
+
     if load_cell_capacity(1, Source::GroupInput).is_ok() {
         log::error!("There can be only one GroupInput");
         return Err(Error::TxStructure);
@@ -57,14 +41,7 @@ fn is_input() -> Result<bool, Error> {
         return Err(Error::TxStructure);
     }
 
-    if input && !output {
-        Ok(true)
-    } else if !input && output {
-        Ok(false)
-    } else {
-        log::error!("Both Inputs and Outputs has But Intent");
-        Err(Error::TxStructure)
-    }
+    Ok(input)
 }
 
 fn load_verified_data(is_input: bool) -> Result<(BuyIntentData, Hash), Error> {

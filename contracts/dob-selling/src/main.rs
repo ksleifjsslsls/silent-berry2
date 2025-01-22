@@ -14,20 +14,21 @@ use ckb_std::{
     ckb_types::prelude::{Entity, Reader},
     high_level::{
         load_cell_data, load_cell_data_hash, load_cell_lock_hash, load_cell_type,
-        load_cell_type_hash, load_script, load_witness_args, QueryIter,
+        load_cell_type_hash, load_witness_args, QueryIter,
     },
     log,
 };
 use types::error::SilentBerryError as Error;
 use types::DobSellingData;
-use utils::Hash;
+use utils::{load_args_to_hash, Hash};
 
 fn load_verified_data() -> Result<DobSellingData, Error> {
-    let args = load_script()?.args().raw_data();
-    if args.len() != utils::HASH_SIZE {
-        log::error!("Args len is not {} {}", utils::HASH_SIZE, args.len());
+    let args = load_args_to_hash()?;
+    if args.len() != 1 {
+        log::error!("Args len is not 1 {}", args.len());
         return Err(Error::VerifiedData);
     }
+    let intent_data_hash = args[0].clone();
 
     let witness = load_witness_args(0, Source::GroupInput)?;
     let witness = witness
@@ -41,11 +42,7 @@ fn load_verified_data() -> Result<DobSellingData, Error> {
 
     types::DobSellingDataReader::verify(witness.to_vec().as_slice(), false)?;
     let witness_data = DobSellingData::new_unchecked(witness);
-
-    let hash = Hash::ckb_hash(witness_data.as_slice());
-    let intent_data_hash: Hash = args.try_into()?;
-
-    if hash != intent_data_hash {
+    if intent_data_hash != Hash::ckb_hash(witness_data.as_slice()) {
         log::error!("Witness data Hash != Args");
         return Err(Error::VerifiedData);
     }

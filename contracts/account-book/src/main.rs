@@ -10,12 +10,12 @@ use ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::{Builder, Entity, Pack, Unpack},
     error::SysError,
-    high_level::{load_cell_lock, load_cell_type_hash, load_script},
+    high_level::{load_cell_lock, load_cell_type_hash},
     log,
 };
 pub use types::error::SilentBerryError as Error;
 use types::{AccountBookCellData, AccountBookData, Uint128Opt};
-use utils::{Hash, UDTInfo};
+use utils::{get_indexs, load_lock_code_hash, load_type_code_hash, Hash, UDTInfo};
 
 #[path = "selling.rs"]
 mod selling;
@@ -27,11 +27,12 @@ mod withdrawal;
 mod creation;
 
 fn load_verified_data() -> Result<AccountBookData, Error> {
-    let args = load_script()?.args().raw_data();
-    if args.len() != utils::HASH_SIZE {
-        log::error!("Args len is not {} {}", utils::HASH_SIZE, args.len());
+    let args = utils::load_args_to_hash()?;
+    if args.len() != 1 {
+        log::error!("Args len is not 1 {}", args.len());
         return Err(Error::VerifiedData);
     }
+    let witness_data_hash = args[0].clone();
 
     let witness_data = utils::load_account_book_data(0, Source::GroupOutput)?;
 
@@ -46,9 +47,7 @@ fn load_verified_data() -> Result<AccountBookData, Error> {
         Hash::ckb_hash(data2.as_slice())
     };
 
-    let args_intent_data_hash: Hash = args.try_into()?;
-
-    if witness_hash != args_intent_data_hash {
+    if witness_hash != witness_data_hash {
         log::error!("Witness data Hash != Args");
         return Err(Error::VerifiedData);
     }
@@ -85,7 +84,7 @@ fn is_creation() -> Result<bool, Error> {
 }
 
 fn verify_cell_data(old: &AccountBookCellData, new: &AccountBookCellData) -> Result<(), Error> {
-    let old = old
+    let old: AccountBookCellData = old
         .clone()
         .as_builder()
         .smt_root_hash(Default::default())
@@ -114,9 +113,10 @@ fn load_verified_cell_data(is_selling: bool) -> Result<(AccountBookCellData, Has
     let new_buyer_count: u32 = new_data.buyer_count().unpack();
     if is_selling && old_buyer_count + 1 != new_buyer_count {
         log::error!(
-            "CellData buyer count incorrect: {}, {}",
+            "CellData buyer count incorrect: {}, {}, is_selling: {}",
             old_buyer_count,
-            new_buyer_count
+            new_buyer_count,
+            is_selling,
         );
         return Err(Error::AccountBookModified);
     } else if !is_selling && old_buyer_count != new_buyer_count {
@@ -128,17 +128,24 @@ fn load_verified_cell_data(is_selling: bool) -> Result<(AccountBookCellData, Has
 }
 
 fn is_selling(witness_data: &AccountBookData) -> Result<bool, Error> {
-    let dob_selling_code_hash = witness_data.dob_selling_code_hash().into();
-
-    let has_dob_selling =
-        !utils::get_index_by_code_hash(dob_selling_code_hash, true, Source::Input)?.is_empty();
-    if has_dob_selling {
+    let dob_selling_code_hash: Hash = witness_data.dob_selling_code_hash().into();
+    if !get_indexs(
+        load_lock_code_hash,
+        |h| dob_selling_code_hash == h,
+        Source::Input,
+    )
+    .is_empty()
+    {
         Ok(true)
     } else {
-        let withdrawal_code_hash = witness_data.withdrawal_intent_code_hash().into();
-        let has_withdrawal =
-            !utils::get_index_by_code_hash(withdrawal_code_hash, false, Source::Input)?.is_empty();
-        if has_withdrawal {
+        let withdrawal_code_hash: Hash = witness_data.withdrawal_intent_code_hash().into();
+        if !get_indexs(
+            load_type_code_hash,
+            |h| withdrawal_code_hash == h,
+            Source::Input,
+        )
+        .is_empty()
+        {
             Ok(false)
         } else {
             log::error!("WithdrawalIntent Script not found in Inputs");
@@ -158,11 +165,21 @@ fn check_input_type_proxy_lock(
         })?
         .into();
 
+    let input_proxy_code_hash: Hash = witness_data.input_type_proxy_lock_code_hash().into();
+    let indexs = get_indexs(
+        load_lock_code_hash,
+        |h| input_proxy_code_hash == h,
+        Source::Input,
+    );
+    if indexs.len() != 1 {
+        log::error!("Multiple input_type_proxy_locks found in Inputs");
+        return Err(Error::TxStructure);
+    }
+
     let mut input_amount = None;
-    let hash: Hash = witness_data.input_type_proxy_lock_code_hash().into();
     for (udt, index) in &udt_info.inputs {
         let script = load_cell_lock(*index, Source::Input)?;
-        if hash != script.code_hash() {
+        if input_proxy_code_hash != script.code_hash() {
             continue;
         }
         let account_book_script_hash: Hash = script.args().raw_data().try_into()?;
@@ -183,7 +200,7 @@ fn check_input_type_proxy_lock(
     let mut output_amount: Option<u128> = None;
     for (udt, index) in &udt_info.outputs {
         let script = load_cell_lock(*index, Source::Output)?;
-        if hash != script.code_hash() {
+        if input_proxy_code_hash != script.code_hash() {
             continue;
         }
         let account_book_script_hash: Hash = script.args().raw_data().try_into()?;

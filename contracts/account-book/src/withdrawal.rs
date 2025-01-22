@@ -9,7 +9,7 @@ use ckb_std::{
     log,
 };
 use types::{AccountBookCellData, AccountBookData};
-use utils::{Hash, SmtKey, UDTInfo};
+use utils::{get_indexs, load_type_code_hash, Hash, SmtKey, UDTInfo};
 
 fn is_platform(cell_data: &AccountBookCellData) -> Result<bool, Error> {
     let hash: Hash = cell_data.platform_id().into();
@@ -84,8 +84,13 @@ fn get_total_withdrawn(
     } else {
         // Load spore level
         let (spore_level, spore_id) = {
-            let withdrawal_code_hash = witness_data.withdrawal_intent_code_hash().into();
-            let indexs = utils::get_index_by_code_hash(withdrawal_code_hash, false, Source::Input)?;
+            let withdrawal_code_hash: Hash = witness_data.withdrawal_intent_code_hash().into();
+
+            let indexs = get_indexs(
+                load_type_code_hash,
+                |h| withdrawal_code_hash == h,
+                Source::Input,
+            );
             let withdrawal_data = load_witness_args(indexs[0], Source::Input)?
                 .input_type()
                 .to_opt()
@@ -142,11 +147,12 @@ fn get_total_withdrawn(
 }
 
 fn get_output_udt(witness_data: &AccountBookData, udt_info: &UDTInfo) -> Result<u128, Error> {
-    let indexs = utils::get_index_by_code_hash(
-        witness_data.withdrawal_intent_code_hash().into(),
-        false,
+    let withdrawal_intent_code_hash: Hash = witness_data.withdrawal_intent_code_hash().into();
+    let indexs = get_indexs(
+        load_type_code_hash,
+        |h| withdrawal_intent_code_hash == h,
         Source::Input,
-    )?;
+    );
     let withdrawal_data = utils::load_withdrawal_data(indexs[0], Source::Input, true)?;
     let owner_script_hash: Hash = withdrawal_data.owner_script_hash().into();
 
