@@ -13,16 +13,16 @@ ckb_std::default_alloc!();
 
 use ckb_std::{
     ckb_constants::Source,
-    ckb_types::prelude::{Entity, Reader, Unpack},
+    ckb_types::prelude::{Entity, Unpack},
     high_level::{
         load_cell_capacity, load_cell_data, load_cell_lock_hash, load_cell_type_hash,
-        load_input_since, load_script, load_witness_args, QueryIter,
+        load_input_since, QueryIter,
     },
     log::{self},
 };
 use types::error::SilentBerryError as Error;
 use types::{AccountBookCellData, BuyIntentData};
-use utils::{is_not_out_of_bound, Hash};
+use utils::{is_not_out_of_bound, load_args_to_hash, Hash};
 
 fn is_input() -> Result<bool, Error> {
     let input = is_not_out_of_bound(load_cell_capacity(0, Source::GroupInput))?;
@@ -45,9 +45,9 @@ fn is_input() -> Result<bool, Error> {
 }
 
 fn load_verified_data(is_input: bool) -> Result<(BuyIntentData, Hash), Error> {
-    let args = load_script()?.args().raw_data();
-    if args.len() != utils::HASH_SIZE * 2 {
-        log::error!("Args len is not {} {}", utils::HASH_SIZE * 2, args.len());
+    let args = load_args_to_hash()?;
+    if args.len() != 2 {
+        log::error!("Args len is not 2 {}", args.len());
         return Err(Error::VerifiedData);
     }
 
@@ -57,30 +57,14 @@ fn load_verified_data(is_input: bool) -> Result<(BuyIntentData, Hash), Error> {
         Source::GroupOutput
     };
 
-    let witness = load_witness_args(0, source)?;
-    let witness = if is_input {
-        witness.input_type().to_opt()
-    } else {
-        witness.output_type().to_opt()
-    }
-    .ok_or_else(|| {
-        log::error!("load witnesses failed");
-        Error::TxStructure
-    })?
-    .raw_data();
+    let witness_data = utils::load_buy_intent_data(0, source)?;
 
-    types::BuyIntentDataReader::verify(witness.to_vec().as_slice(), false)?;
-    let witness_data = BuyIntentData::new_unchecked(witness);
-
-    let hash = Hash::ckb_hash(witness_data.as_slice());
-    let intent_data_hash: Hash = args[utils::HASH_SIZE..].try_into()?;
-
-    if hash != intent_data_hash {
+    if Hash::ckb_hash(witness_data.as_slice()) != args[1] {
         log::error!("Check intent data hash failed");
         return Err(Error::VerifiedData);
     }
 
-    Ok((witness_data, args[..utils::HASH_SIZE].try_into()?))
+    Ok((witness_data, args[0].clone()))
 }
 
 fn check_input_dob_selling(dob_selling_hash: Hash) -> Result<(), Error> {
@@ -139,9 +123,7 @@ fn check_account_book(account_book_hash: Hash, price: u128) -> Result<(), Error>
 fn program_entry2() -> Result<(), Error> {
     let is_input = is_input()?;
     let (witness_data, accountbook_hash) = load_verified_data(is_input)?;
-
-    // Check xUDT Script Hash
-    let xudt_script_hash: Hash = witness_data.xudt_script_hash().into();
+    let udt_info = utils::UDTInfo::new(witness_data.xudt_script_hash().into())?;
 
     if is_input {
         let ret = check_account_book(accountbook_hash, witness_data.price().unpack());
@@ -171,8 +153,6 @@ fn program_entry2() -> Result<(), Error> {
             log::error!("Dob Selling Script Hash failed");
             return Err(Error::CheckScript);
         }
-
-        let udt_info = utils::UDTInfo::new(xudt_script_hash)?;
 
         if udt_info.inputs.len() != 1 {
             log::error!("xUDT inputs len failed");

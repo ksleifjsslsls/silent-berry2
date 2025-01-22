@@ -23,7 +23,7 @@ use ckb_std::{
     high_level::{load_cell_data, load_cell_lock, load_cell_type, load_witness_args, QueryIter},
     log,
 };
-use types::{error::SilentBerryError as Error, AccountBookCellData};
+use types::{error::SilentBerryError as Error, AccountBookCellData, BuyIntentData};
 use types::{AccountBookData, WithdrawalIntentData};
 
 pub const MAX_CELLS_LEN: usize = 256;
@@ -119,6 +119,27 @@ pub fn get_spore_level(spore_data: &spore_types::spore::SporeData) -> Result<u8,
         log::error!("Get level by Spore Content failed, content: {}", content);
         Error::Spore
     })? as u8)
+}
+
+pub fn load_buy_intent_data(index: usize, source: Source) -> Result<BuyIntentData, Error> {
+    let witness = load_witness_args(index, source)?;
+
+    let is_input = source == Source::GroupInput || source == Source::Input;
+
+    let witness = if is_input {
+        witness.input_type()
+    } else {
+        witness.output_type()
+    }
+    .to_opt()
+    .ok_or_else(|| {
+        log::error!("Load witnesses failed, output type is None");
+        Error::ParseWitness
+    })?
+    .raw_data();
+
+    types::BuyIntentDataReader::verify(witness.to_vec().as_slice(), true)?;
+    Ok(BuyIntentData::new_unchecked(witness))
 }
 
 pub fn load_account_book_data(index: usize, source: Source) -> Result<AccountBookData, Error> {

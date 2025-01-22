@@ -12,9 +12,10 @@ ckb_std::default_alloc!();
 use ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::{Entity, Reader},
+    error::SysError,
     high_level::{
-        load_cell_data, load_cell_data_hash, load_cell_lock_hash, load_cell_type,
-        load_cell_type_hash, load_witness_args, QueryIter,
+        load_cell_data_hash, load_cell_lock_hash, load_cell_type, load_cell_type_hash,
+        load_witness_args, QueryIter,
     },
     log,
 };
@@ -86,22 +87,10 @@ fn check_buy_intent_code_hash(hash: Hash) -> Result<(), Error> {
 }
 
 fn revocation(witness_data: DobSellingData) -> Result<(), Error> {
-    let hash = load_cell_lock_hash(0, Source::Output)?;
-    let owner_script_hash: Hash = witness_data.owner_script_hash().into();
-    if owner_script_hash != hash {
-        log::error!("Revocation failed, owner hash");
-        return Err(Error::CheckScript);
-    }
-
-    let amount1 = u128::from_le_bytes(load_cell_data(0, Source::Input)?.try_into().unwrap());
-    let amount2 = u128::from_le_bytes(load_cell_data(0, Source::Output)?.try_into().unwrap());
-    if amount1 != amount2 {
-        log::error!("Revocation failed, input: {}, output: {}", amount1, amount2);
-        return Err(Error::CheckXUDT);
-    }
+    const BUY_INTENT_INDEX: usize = 1;
 
     let buy_intent_code_hash: Hash = witness_data.buy_intent_code_hash().into();
-    let lock_code_hash: Hash = load_cell_type(1, Source::Input)?
+    let lock_code_hash: Hash = load_cell_type(BUY_INTENT_INDEX, Source::Input)?
         .ok_or_else(|| {
             log::error!("Input[1] type script is None");
             Error::TxStructure
@@ -111,6 +100,20 @@ fn revocation(witness_data: DobSellingData) -> Result<(), Error> {
     if buy_intent_code_hash != lock_code_hash {
         log::error!("Revocation failed, Buy Intent not fount in Input 1");
         return Err(Error::CheckScript);
+    }
+
+    let owner_script_hash: Hash = witness_data.owner_script_hash().into();
+    if owner_script_hash != load_cell_lock_hash(1, Source::Output)? {
+        log::error!("Revocation failed, owner hash");
+        return Err(Error::CheckScript);
+    }
+
+    let buy_intent_data = utils::load_buy_intent_data(1, Source::Input)?;
+    let _udt_info = utils::UDTInfo::new(buy_intent_data.xudt_script_hash().into());
+
+    if load_cell_lock_hash(2, Source::Input) != Err(SysError::IndexOutOfBound) {
+        log::error!("As a revocation , no other contracts can exist for Input");
+        return Err(Error::TxStructure);
     }
 
     Ok(())

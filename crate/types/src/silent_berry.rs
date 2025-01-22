@@ -40,12 +40,6 @@ impl ::core::fmt::Display for BuyIntentData {
         write!(f, ", {}: {}", "xudt_script_hash", self.xudt_script_hash())?;
         write!(f, ", {}: {}", "price", self.price())?;
         write!(f, ", {}: {}", "min_capacity", self.min_capacity())?;
-        write!(
-            f,
-            ", {}: {}",
-            "change_script_hash",
-            self.change_script_hash()
-        )?;
         write!(f, ", {}: {}", "expire_since", self.expire_since())?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
         let extra_count = self.count_extra_fields();
@@ -62,16 +56,15 @@ impl ::core::default::Default for BuyIntentData {
     }
 }
 impl BuyIntentData {
-    const DEFAULT_VALUE: [u8; 192] = [
-        192, 0, 0, 0, 32, 0, 0, 0, 64, 0, 0, 0, 96, 0, 0, 0, 112, 0, 0, 0, 120, 0, 0, 0, 152, 0, 0,
-        0, 160, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    const DEFAULT_VALUE: [u8; 156] = [
+        156, 0, 0, 0, 28, 0, 0, 0, 60, 0, 0, 0, 92, 0, 0, 0, 108, 0, 0, 0, 116, 0, 0, 0, 124, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
-    pub const FIELD_COUNT: usize = 7;
+    pub const FIELD_COUNT: usize = 6;
     pub fn total_size(&self) -> usize {
         molecule::unpack_number(self.as_slice()) as usize
     }
@@ -112,23 +105,17 @@ impl BuyIntentData {
         let end = molecule::unpack_number(&slice[20..]) as usize;
         Uint64::new_unchecked(self.0.slice(start..end))
     }
-    pub fn change_script_hash(&self) -> Byte32 {
+    pub fn expire_since(&self) -> Uint64 {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[20..]) as usize;
         let end = molecule::unpack_number(&slice[24..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
-    }
-    pub fn expire_since(&self) -> Uint64 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[24..]) as usize;
-        let end = molecule::unpack_number(&slice[28..]) as usize;
         Uint64::new_unchecked(self.0.slice(start..end))
     }
     pub fn owner_script_hash(&self) -> Byte32 {
         let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[28..]) as usize;
+        let start = molecule::unpack_number(&slice[24..]) as usize;
         if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[32..]) as usize;
+            let end = molecule::unpack_number(&slice[28..]) as usize;
             Byte32::new_unchecked(self.0.slice(start..end))
         } else {
             Byte32::new_unchecked(self.0.slice(start..))
@@ -165,7 +152,6 @@ impl molecule::prelude::Entity for BuyIntentData {
             .xudt_script_hash(self.xudt_script_hash())
             .price(self.price())
             .min_capacity(self.min_capacity())
-            .change_script_hash(self.change_script_hash())
             .expire_since(self.expire_since())
             .owner_script_hash(self.owner_script_hash())
     }
@@ -198,12 +184,6 @@ impl<'r> ::core::fmt::Display for BuyIntentDataReader<'r> {
         write!(f, ", {}: {}", "xudt_script_hash", self.xudt_script_hash())?;
         write!(f, ", {}: {}", "price", self.price())?;
         write!(f, ", {}: {}", "min_capacity", self.min_capacity())?;
-        write!(
-            f,
-            ", {}: {}",
-            "change_script_hash",
-            self.change_script_hash()
-        )?;
         write!(f, ", {}: {}", "expire_since", self.expire_since())?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
         let extra_count = self.count_extra_fields();
@@ -214,7 +194,7 @@ impl<'r> ::core::fmt::Display for BuyIntentDataReader<'r> {
     }
 }
 impl<'r> BuyIntentDataReader<'r> {
-    pub const FIELD_COUNT: usize = 7;
+    pub const FIELD_COUNT: usize = 6;
     pub fn total_size(&self) -> usize {
         molecule::unpack_number(self.as_slice()) as usize
     }
@@ -255,23 +235,17 @@ impl<'r> BuyIntentDataReader<'r> {
         let end = molecule::unpack_number(&slice[20..]) as usize;
         Uint64Reader::new_unchecked(&self.as_slice()[start..end])
     }
-    pub fn change_script_hash(&self) -> Byte32Reader<'r> {
+    pub fn expire_since(&self) -> Uint64Reader<'r> {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[20..]) as usize;
         let end = molecule::unpack_number(&slice[24..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-    }
-    pub fn expire_since(&self) -> Uint64Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[24..]) as usize;
-        let end = molecule::unpack_number(&slice[28..]) as usize;
         Uint64Reader::new_unchecked(&self.as_slice()[start..end])
     }
     pub fn owner_script_hash(&self) -> Byte32Reader<'r> {
         let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[28..]) as usize;
+        let start = molecule::unpack_number(&slice[24..]) as usize;
         if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[32..]) as usize;
+            let end = molecule::unpack_number(&slice[28..]) as usize;
             Byte32Reader::new_unchecked(&self.as_slice()[start..end])
         } else {
             Byte32Reader::new_unchecked(&self.as_slice()[start..])
@@ -328,9 +302,8 @@ impl<'r> molecule::prelude::Reader<'r> for BuyIntentDataReader<'r> {
         Byte32Reader::verify(&slice[offsets[1]..offsets[2]], compatible)?;
         Uint128Reader::verify(&slice[offsets[2]..offsets[3]], compatible)?;
         Uint64Reader::verify(&slice[offsets[3]..offsets[4]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[4]..offsets[5]], compatible)?;
-        Uint64Reader::verify(&slice[offsets[5]..offsets[6]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[6]..offsets[7]], compatible)?;
+        Uint64Reader::verify(&slice[offsets[4]..offsets[5]], compatible)?;
+        Byte32Reader::verify(&slice[offsets[5]..offsets[6]], compatible)?;
         Ok(())
     }
 }
@@ -340,12 +313,11 @@ pub struct BuyIntentDataBuilder {
     pub(crate) xudt_script_hash: Byte32,
     pub(crate) price: Uint128,
     pub(crate) min_capacity: Uint64,
-    pub(crate) change_script_hash: Byte32,
     pub(crate) expire_since: Uint64,
     pub(crate) owner_script_hash: Byte32,
 }
 impl BuyIntentDataBuilder {
-    pub const FIELD_COUNT: usize = 7;
+    pub const FIELD_COUNT: usize = 6;
     pub fn dob_selling_script_hash(mut self, v: Byte32) -> Self {
         self.dob_selling_script_hash = v;
         self
@@ -360,10 +332,6 @@ impl BuyIntentDataBuilder {
     }
     pub fn min_capacity(mut self, v: Uint64) -> Self {
         self.min_capacity = v;
-        self
-    }
-    pub fn change_script_hash(mut self, v: Byte32) -> Self {
-        self.change_script_hash = v;
         self
     }
     pub fn expire_since(mut self, v: Uint64) -> Self {
@@ -384,7 +352,6 @@ impl molecule::prelude::Builder for BuyIntentDataBuilder {
             + self.xudt_script_hash.as_slice().len()
             + self.price.as_slice().len()
             + self.min_capacity.as_slice().len()
-            + self.change_script_hash.as_slice().len()
             + self.expire_since.as_slice().len()
             + self.owner_script_hash.as_slice().len()
     }
@@ -400,8 +367,6 @@ impl molecule::prelude::Builder for BuyIntentDataBuilder {
         offsets.push(total_size);
         total_size += self.min_capacity.as_slice().len();
         offsets.push(total_size);
-        total_size += self.change_script_hash.as_slice().len();
-        offsets.push(total_size);
         total_size += self.expire_since.as_slice().len();
         offsets.push(total_size);
         total_size += self.owner_script_hash.as_slice().len();
@@ -413,7 +378,6 @@ impl molecule::prelude::Builder for BuyIntentDataBuilder {
         writer.write_all(self.xudt_script_hash.as_slice())?;
         writer.write_all(self.price.as_slice())?;
         writer.write_all(self.min_capacity.as_slice())?;
-        writer.write_all(self.change_script_hash.as_slice())?;
         writer.write_all(self.expire_since.as_slice())?;
         writer.write_all(self.owner_script_hash.as_slice())?;
         Ok(())
@@ -423,399 +387,6 @@ impl molecule::prelude::Builder for BuyIntentDataBuilder {
         self.write(&mut inner)
             .unwrap_or_else(|_| panic!("{} build should be ok", Self::NAME));
         BuyIntentData::new_unchecked(inner.into())
-    }
-}
-#[derive(Clone)]
-pub struct WithdrawalIntentData(molecule::bytes::Bytes);
-impl ::core::fmt::LowerHex for WithdrawalIntentData {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        use molecule::hex_string;
-        if f.alternate() {
-            write!(f, "0x")?;
-        }
-        write!(f, "{}", hex_string(self.as_slice()))
-    }
-}
-impl ::core::fmt::Debug for WithdrawalIntentData {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        write!(f, "{}({:#x})", Self::NAME, self)
-    }
-}
-impl ::core::fmt::Display for WithdrawalIntentData {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        write!(f, "{} {{ ", Self::NAME)?;
-        write!(f, "{}: {}", "xudt_script_hash", self.xudt_script_hash())?;
-        write!(f, ", {}: {}", "spore_code_hash", self.spore_code_hash())?;
-        write!(f, ", {}: {}", "spore_level", self.spore_level())?;
-        write!(f, ", {}: {}", "spore_id", self.spore_id())?;
-        write!(f, ", {}: {}", "cluster_id", self.cluster_id())?;
-        write!(f, ", {}: {}", "expire_since", self.expire_since())?;
-        write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
-        let extra_count = self.count_extra_fields();
-        if extra_count != 0 {
-            write!(f, ", .. ({} fields)", extra_count)?;
-        }
-        write!(f, " }}")
-    }
-}
-impl ::core::default::Default for WithdrawalIntentData {
-    fn default() -> Self {
-        let v = molecule::bytes::Bytes::from_static(&Self::DEFAULT_VALUE);
-        WithdrawalIntentData::new_unchecked(v)
-    }
-}
-impl WithdrawalIntentData {
-    const DEFAULT_VALUE: [u8; 201] = [
-        201, 0, 0, 0, 32, 0, 0, 0, 64, 0, 0, 0, 96, 0, 0, 0, 97, 0, 0, 0, 129, 0, 0, 0, 161, 0, 0,
-        0, 169, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ];
-    pub const FIELD_COUNT: usize = 7;
-    pub fn total_size(&self) -> usize {
-        molecule::unpack_number(self.as_slice()) as usize
-    }
-    pub fn field_count(&self) -> usize {
-        if self.total_size() == molecule::NUMBER_SIZE {
-            0
-        } else {
-            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
-        }
-    }
-    pub fn count_extra_fields(&self) -> usize {
-        self.field_count() - Self::FIELD_COUNT
-    }
-    pub fn has_extra_fields(&self) -> bool {
-        Self::FIELD_COUNT != self.field_count()
-    }
-    pub fn xudt_script_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[4..]) as usize;
-        let end = molecule::unpack_number(&slice[8..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
-    }
-    pub fn spore_code_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[8..]) as usize;
-        let end = molecule::unpack_number(&slice[12..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
-    }
-    pub fn spore_level(&self) -> Byte {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[12..]) as usize;
-        let end = molecule::unpack_number(&slice[16..]) as usize;
-        Byte::new_unchecked(self.0.slice(start..end))
-    }
-    pub fn spore_id(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[16..]) as usize;
-        let end = molecule::unpack_number(&slice[20..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
-    }
-    pub fn cluster_id(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[20..]) as usize;
-        let end = molecule::unpack_number(&slice[24..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
-    }
-    pub fn expire_since(&self) -> Uint64 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[24..]) as usize;
-        let end = molecule::unpack_number(&slice[28..]) as usize;
-        Uint64::new_unchecked(self.0.slice(start..end))
-    }
-    pub fn owner_script_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[28..]) as usize;
-        if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[32..]) as usize;
-            Byte32::new_unchecked(self.0.slice(start..end))
-        } else {
-            Byte32::new_unchecked(self.0.slice(start..))
-        }
-    }
-    pub fn as_reader<'r>(&'r self) -> WithdrawalIntentDataReader<'r> {
-        WithdrawalIntentDataReader::new_unchecked(self.as_slice())
-    }
-}
-impl molecule::prelude::Entity for WithdrawalIntentData {
-    type Builder = WithdrawalIntentDataBuilder;
-    const NAME: &'static str = "WithdrawalIntentData";
-    fn new_unchecked(data: molecule::bytes::Bytes) -> Self {
-        WithdrawalIntentData(data)
-    }
-    fn as_bytes(&self) -> molecule::bytes::Bytes {
-        self.0.clone()
-    }
-    fn as_slice(&self) -> &[u8] {
-        &self.0[..]
-    }
-    fn from_slice(slice: &[u8]) -> molecule::error::VerificationResult<Self> {
-        WithdrawalIntentDataReader::from_slice(slice).map(|reader| reader.to_entity())
-    }
-    fn from_compatible_slice(slice: &[u8]) -> molecule::error::VerificationResult<Self> {
-        WithdrawalIntentDataReader::from_compatible_slice(slice).map(|reader| reader.to_entity())
-    }
-    fn new_builder() -> Self::Builder {
-        ::core::default::Default::default()
-    }
-    fn as_builder(self) -> Self::Builder {
-        Self::new_builder()
-            .xudt_script_hash(self.xudt_script_hash())
-            .spore_code_hash(self.spore_code_hash())
-            .spore_level(self.spore_level())
-            .spore_id(self.spore_id())
-            .cluster_id(self.cluster_id())
-            .expire_since(self.expire_since())
-            .owner_script_hash(self.owner_script_hash())
-    }
-}
-#[derive(Clone, Copy)]
-pub struct WithdrawalIntentDataReader<'r>(&'r [u8]);
-impl<'r> ::core::fmt::LowerHex for WithdrawalIntentDataReader<'r> {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        use molecule::hex_string;
-        if f.alternate() {
-            write!(f, "0x")?;
-        }
-        write!(f, "{}", hex_string(self.as_slice()))
-    }
-}
-impl<'r> ::core::fmt::Debug for WithdrawalIntentDataReader<'r> {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        write!(f, "{}({:#x})", Self::NAME, self)
-    }
-}
-impl<'r> ::core::fmt::Display for WithdrawalIntentDataReader<'r> {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        write!(f, "{} {{ ", Self::NAME)?;
-        write!(f, "{}: {}", "xudt_script_hash", self.xudt_script_hash())?;
-        write!(f, ", {}: {}", "spore_code_hash", self.spore_code_hash())?;
-        write!(f, ", {}: {}", "spore_level", self.spore_level())?;
-        write!(f, ", {}: {}", "spore_id", self.spore_id())?;
-        write!(f, ", {}: {}", "cluster_id", self.cluster_id())?;
-        write!(f, ", {}: {}", "expire_since", self.expire_since())?;
-        write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
-        let extra_count = self.count_extra_fields();
-        if extra_count != 0 {
-            write!(f, ", .. ({} fields)", extra_count)?;
-        }
-        write!(f, " }}")
-    }
-}
-impl<'r> WithdrawalIntentDataReader<'r> {
-    pub const FIELD_COUNT: usize = 7;
-    pub fn total_size(&self) -> usize {
-        molecule::unpack_number(self.as_slice()) as usize
-    }
-    pub fn field_count(&self) -> usize {
-        if self.total_size() == molecule::NUMBER_SIZE {
-            0
-        } else {
-            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
-        }
-    }
-    pub fn count_extra_fields(&self) -> usize {
-        self.field_count() - Self::FIELD_COUNT
-    }
-    pub fn has_extra_fields(&self) -> bool {
-        Self::FIELD_COUNT != self.field_count()
-    }
-    pub fn xudt_script_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[4..]) as usize;
-        let end = molecule::unpack_number(&slice[8..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-    }
-    pub fn spore_code_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[8..]) as usize;
-        let end = molecule::unpack_number(&slice[12..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-    }
-    pub fn spore_level(&self) -> ByteReader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[12..]) as usize;
-        let end = molecule::unpack_number(&slice[16..]) as usize;
-        ByteReader::new_unchecked(&self.as_slice()[start..end])
-    }
-    pub fn spore_id(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[16..]) as usize;
-        let end = molecule::unpack_number(&slice[20..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-    }
-    pub fn cluster_id(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[20..]) as usize;
-        let end = molecule::unpack_number(&slice[24..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-    }
-    pub fn expire_since(&self) -> Uint64Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[24..]) as usize;
-        let end = molecule::unpack_number(&slice[28..]) as usize;
-        Uint64Reader::new_unchecked(&self.as_slice()[start..end])
-    }
-    pub fn owner_script_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[28..]) as usize;
-        if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[32..]) as usize;
-            Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-        } else {
-            Byte32Reader::new_unchecked(&self.as_slice()[start..])
-        }
-    }
-}
-impl<'r> molecule::prelude::Reader<'r> for WithdrawalIntentDataReader<'r> {
-    type Entity = WithdrawalIntentData;
-    const NAME: &'static str = "WithdrawalIntentDataReader";
-    fn to_entity(&self) -> Self::Entity {
-        Self::Entity::new_unchecked(self.as_slice().to_owned().into())
-    }
-    fn new_unchecked(slice: &'r [u8]) -> Self {
-        WithdrawalIntentDataReader(slice)
-    }
-    fn as_slice(&self) -> &'r [u8] {
-        self.0
-    }
-    fn verify(slice: &[u8], compatible: bool) -> molecule::error::VerificationResult<()> {
-        use molecule::verification_error as ve;
-        let slice_len = slice.len();
-        if slice_len < molecule::NUMBER_SIZE {
-            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE, slice_len);
-        }
-        let total_size = molecule::unpack_number(slice) as usize;
-        if slice_len != total_size {
-            return ve!(Self, TotalSizeNotMatch, total_size, slice_len);
-        }
-        if slice_len < molecule::NUMBER_SIZE * 2 {
-            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE * 2, slice_len);
-        }
-        let offset_first = molecule::unpack_number(&slice[molecule::NUMBER_SIZE..]) as usize;
-        if offset_first % molecule::NUMBER_SIZE != 0 || offset_first < molecule::NUMBER_SIZE * 2 {
-            return ve!(Self, OffsetsNotMatch);
-        }
-        if slice_len < offset_first {
-            return ve!(Self, HeaderIsBroken, offset_first, slice_len);
-        }
-        let field_count = offset_first / molecule::NUMBER_SIZE - 1;
-        if field_count < Self::FIELD_COUNT {
-            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
-        } else if !compatible && field_count > Self::FIELD_COUNT {
-            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
-        };
-        let mut offsets: Vec<usize> = slice[molecule::NUMBER_SIZE..offset_first]
-            .chunks_exact(molecule::NUMBER_SIZE)
-            .map(|x| molecule::unpack_number(x) as usize)
-            .collect();
-        offsets.push(total_size);
-        if offsets.windows(2).any(|i| i[0] > i[1]) {
-            return ve!(Self, OffsetsNotMatch);
-        }
-        Byte32Reader::verify(&slice[offsets[0]..offsets[1]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[1]..offsets[2]], compatible)?;
-        ByteReader::verify(&slice[offsets[2]..offsets[3]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[3]..offsets[4]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[4]..offsets[5]], compatible)?;
-        Uint64Reader::verify(&slice[offsets[5]..offsets[6]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[6]..offsets[7]], compatible)?;
-        Ok(())
-    }
-}
-#[derive(Clone, Debug, Default)]
-pub struct WithdrawalIntentDataBuilder {
-    pub(crate) xudt_script_hash: Byte32,
-    pub(crate) spore_code_hash: Byte32,
-    pub(crate) spore_level: Byte,
-    pub(crate) spore_id: Byte32,
-    pub(crate) cluster_id: Byte32,
-    pub(crate) expire_since: Uint64,
-    pub(crate) owner_script_hash: Byte32,
-}
-impl WithdrawalIntentDataBuilder {
-    pub const FIELD_COUNT: usize = 7;
-    pub fn xudt_script_hash(mut self, v: Byte32) -> Self {
-        self.xudt_script_hash = v;
-        self
-    }
-    pub fn spore_code_hash(mut self, v: Byte32) -> Self {
-        self.spore_code_hash = v;
-        self
-    }
-    pub fn spore_level(mut self, v: Byte) -> Self {
-        self.spore_level = v;
-        self
-    }
-    pub fn spore_id(mut self, v: Byte32) -> Self {
-        self.spore_id = v;
-        self
-    }
-    pub fn cluster_id(mut self, v: Byte32) -> Self {
-        self.cluster_id = v;
-        self
-    }
-    pub fn expire_since(mut self, v: Uint64) -> Self {
-        self.expire_since = v;
-        self
-    }
-    pub fn owner_script_hash(mut self, v: Byte32) -> Self {
-        self.owner_script_hash = v;
-        self
-    }
-}
-impl molecule::prelude::Builder for WithdrawalIntentDataBuilder {
-    type Entity = WithdrawalIntentData;
-    const NAME: &'static str = "WithdrawalIntentDataBuilder";
-    fn expected_length(&self) -> usize {
-        molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1)
-            + self.xudt_script_hash.as_slice().len()
-            + self.spore_code_hash.as_slice().len()
-            + self.spore_level.as_slice().len()
-            + self.spore_id.as_slice().len()
-            + self.cluster_id.as_slice().len()
-            + self.expire_since.as_slice().len()
-            + self.owner_script_hash.as_slice().len()
-    }
-    fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
-        let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
-        let mut offsets = Vec::with_capacity(Self::FIELD_COUNT);
-        offsets.push(total_size);
-        total_size += self.xudt_script_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.spore_code_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.spore_level.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.spore_id.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.cluster_id.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.expire_since.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.owner_script_hash.as_slice().len();
-        writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
-        for offset in offsets.into_iter() {
-            writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
-        }
-        writer.write_all(self.xudt_script_hash.as_slice())?;
-        writer.write_all(self.spore_code_hash.as_slice())?;
-        writer.write_all(self.spore_level.as_slice())?;
-        writer.write_all(self.spore_id.as_slice())?;
-        writer.write_all(self.cluster_id.as_slice())?;
-        writer.write_all(self.expire_since.as_slice())?;
-        writer.write_all(self.owner_script_hash.as_slice())?;
-        Ok(())
-    }
-    fn build(&self) -> Self::Entity {
-        let mut inner = Vec::with_capacity(self.expected_length());
-        self.write(&mut inner)
-            .unwrap_or_else(|_| panic!("{} build should be ok", Self::NAME));
-        WithdrawalIntentData::new_unchecked(inner.into())
     }
 }
 #[derive(Clone)]
@@ -1152,6 +723,436 @@ impl molecule::prelude::Builder for DobSellingDataBuilder {
         self.write(&mut inner)
             .unwrap_or_else(|_| panic!("{} build should be ok", Self::NAME));
         DobSellingData::new_unchecked(inner.into())
+    }
+}
+#[derive(Clone)]
+pub struct WithdrawalIntentData(molecule::bytes::Bytes);
+impl ::core::fmt::LowerHex for WithdrawalIntentData {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        use molecule::hex_string;
+        if f.alternate() {
+            write!(f, "0x")?;
+        }
+        write!(f, "{}", hex_string(self.as_slice()))
+    }
+}
+impl ::core::fmt::Debug for WithdrawalIntentData {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{}({:#x})", Self::NAME, self)
+    }
+}
+impl ::core::fmt::Display for WithdrawalIntentData {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{} {{ ", Self::NAME)?;
+        write!(f, "{}: {}", "xudt_script_hash", self.xudt_script_hash())?;
+        write!(
+            f,
+            ", {}: {}",
+            "xudt_lock_script_hash",
+            self.xudt_lock_script_hash()
+        )?;
+        write!(f, ", {}: {}", "spore_code_hash", self.spore_code_hash())?;
+        write!(f, ", {}: {}", "spore_level", self.spore_level())?;
+        write!(f, ", {}: {}", "spore_id", self.spore_id())?;
+        write!(f, ", {}: {}", "cluster_id", self.cluster_id())?;
+        write!(f, ", {}: {}", "expire_since", self.expire_since())?;
+        write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
+        let extra_count = self.count_extra_fields();
+        if extra_count != 0 {
+            write!(f, ", .. ({} fields)", extra_count)?;
+        }
+        write!(f, " }}")
+    }
+}
+impl ::core::default::Default for WithdrawalIntentData {
+    fn default() -> Self {
+        let v = molecule::bytes::Bytes::from_static(&Self::DEFAULT_VALUE);
+        WithdrawalIntentData::new_unchecked(v)
+    }
+}
+impl WithdrawalIntentData {
+    const DEFAULT_VALUE: [u8; 237] = [
+        237, 0, 0, 0, 36, 0, 0, 0, 68, 0, 0, 0, 100, 0, 0, 0, 132, 0, 0, 0, 133, 0, 0, 0, 165, 0,
+        0, 0, 197, 0, 0, 0, 205, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+    ];
+    pub const FIELD_COUNT: usize = 8;
+    pub fn total_size(&self) -> usize {
+        molecule::unpack_number(self.as_slice()) as usize
+    }
+    pub fn field_count(&self) -> usize {
+        if self.total_size() == molecule::NUMBER_SIZE {
+            0
+        } else {
+            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
+        }
+    }
+    pub fn count_extra_fields(&self) -> usize {
+        self.field_count() - Self::FIELD_COUNT
+    }
+    pub fn has_extra_fields(&self) -> bool {
+        Self::FIELD_COUNT != self.field_count()
+    }
+    pub fn xudt_script_hash(&self) -> Byte32 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[4..]) as usize;
+        let end = molecule::unpack_number(&slice[8..]) as usize;
+        Byte32::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn xudt_lock_script_hash(&self) -> Byte32 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[8..]) as usize;
+        let end = molecule::unpack_number(&slice[12..]) as usize;
+        Byte32::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn spore_code_hash(&self) -> Byte32 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[12..]) as usize;
+        let end = molecule::unpack_number(&slice[16..]) as usize;
+        Byte32::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn spore_level(&self) -> Byte {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[16..]) as usize;
+        let end = molecule::unpack_number(&slice[20..]) as usize;
+        Byte::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn spore_id(&self) -> Byte32 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[20..]) as usize;
+        let end = molecule::unpack_number(&slice[24..]) as usize;
+        Byte32::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn cluster_id(&self) -> Byte32 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[24..]) as usize;
+        let end = molecule::unpack_number(&slice[28..]) as usize;
+        Byte32::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn expire_since(&self) -> Uint64 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[28..]) as usize;
+        let end = molecule::unpack_number(&slice[32..]) as usize;
+        Uint64::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn owner_script_hash(&self) -> Byte32 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[32..]) as usize;
+        if self.has_extra_fields() {
+            let end = molecule::unpack_number(&slice[36..]) as usize;
+            Byte32::new_unchecked(self.0.slice(start..end))
+        } else {
+            Byte32::new_unchecked(self.0.slice(start..))
+        }
+    }
+    pub fn as_reader<'r>(&'r self) -> WithdrawalIntentDataReader<'r> {
+        WithdrawalIntentDataReader::new_unchecked(self.as_slice())
+    }
+}
+impl molecule::prelude::Entity for WithdrawalIntentData {
+    type Builder = WithdrawalIntentDataBuilder;
+    const NAME: &'static str = "WithdrawalIntentData";
+    fn new_unchecked(data: molecule::bytes::Bytes) -> Self {
+        WithdrawalIntentData(data)
+    }
+    fn as_bytes(&self) -> molecule::bytes::Bytes {
+        self.0.clone()
+    }
+    fn as_slice(&self) -> &[u8] {
+        &self.0[..]
+    }
+    fn from_slice(slice: &[u8]) -> molecule::error::VerificationResult<Self> {
+        WithdrawalIntentDataReader::from_slice(slice).map(|reader| reader.to_entity())
+    }
+    fn from_compatible_slice(slice: &[u8]) -> molecule::error::VerificationResult<Self> {
+        WithdrawalIntentDataReader::from_compatible_slice(slice).map(|reader| reader.to_entity())
+    }
+    fn new_builder() -> Self::Builder {
+        ::core::default::Default::default()
+    }
+    fn as_builder(self) -> Self::Builder {
+        Self::new_builder()
+            .xudt_script_hash(self.xudt_script_hash())
+            .xudt_lock_script_hash(self.xudt_lock_script_hash())
+            .spore_code_hash(self.spore_code_hash())
+            .spore_level(self.spore_level())
+            .spore_id(self.spore_id())
+            .cluster_id(self.cluster_id())
+            .expire_since(self.expire_since())
+            .owner_script_hash(self.owner_script_hash())
+    }
+}
+#[derive(Clone, Copy)]
+pub struct WithdrawalIntentDataReader<'r>(&'r [u8]);
+impl<'r> ::core::fmt::LowerHex for WithdrawalIntentDataReader<'r> {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        use molecule::hex_string;
+        if f.alternate() {
+            write!(f, "0x")?;
+        }
+        write!(f, "{}", hex_string(self.as_slice()))
+    }
+}
+impl<'r> ::core::fmt::Debug for WithdrawalIntentDataReader<'r> {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{}({:#x})", Self::NAME, self)
+    }
+}
+impl<'r> ::core::fmt::Display for WithdrawalIntentDataReader<'r> {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{} {{ ", Self::NAME)?;
+        write!(f, "{}: {}", "xudt_script_hash", self.xudt_script_hash())?;
+        write!(
+            f,
+            ", {}: {}",
+            "xudt_lock_script_hash",
+            self.xudt_lock_script_hash()
+        )?;
+        write!(f, ", {}: {}", "spore_code_hash", self.spore_code_hash())?;
+        write!(f, ", {}: {}", "spore_level", self.spore_level())?;
+        write!(f, ", {}: {}", "spore_id", self.spore_id())?;
+        write!(f, ", {}: {}", "cluster_id", self.cluster_id())?;
+        write!(f, ", {}: {}", "expire_since", self.expire_since())?;
+        write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
+        let extra_count = self.count_extra_fields();
+        if extra_count != 0 {
+            write!(f, ", .. ({} fields)", extra_count)?;
+        }
+        write!(f, " }}")
+    }
+}
+impl<'r> WithdrawalIntentDataReader<'r> {
+    pub const FIELD_COUNT: usize = 8;
+    pub fn total_size(&self) -> usize {
+        molecule::unpack_number(self.as_slice()) as usize
+    }
+    pub fn field_count(&self) -> usize {
+        if self.total_size() == molecule::NUMBER_SIZE {
+            0
+        } else {
+            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
+        }
+    }
+    pub fn count_extra_fields(&self) -> usize {
+        self.field_count() - Self::FIELD_COUNT
+    }
+    pub fn has_extra_fields(&self) -> bool {
+        Self::FIELD_COUNT != self.field_count()
+    }
+    pub fn xudt_script_hash(&self) -> Byte32Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[4..]) as usize;
+        let end = molecule::unpack_number(&slice[8..]) as usize;
+        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn xudt_lock_script_hash(&self) -> Byte32Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[8..]) as usize;
+        let end = molecule::unpack_number(&slice[12..]) as usize;
+        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn spore_code_hash(&self) -> Byte32Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[12..]) as usize;
+        let end = molecule::unpack_number(&slice[16..]) as usize;
+        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn spore_level(&self) -> ByteReader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[16..]) as usize;
+        let end = molecule::unpack_number(&slice[20..]) as usize;
+        ByteReader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn spore_id(&self) -> Byte32Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[20..]) as usize;
+        let end = molecule::unpack_number(&slice[24..]) as usize;
+        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn cluster_id(&self) -> Byte32Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[24..]) as usize;
+        let end = molecule::unpack_number(&slice[28..]) as usize;
+        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn expire_since(&self) -> Uint64Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[28..]) as usize;
+        let end = molecule::unpack_number(&slice[32..]) as usize;
+        Uint64Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn owner_script_hash(&self) -> Byte32Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[32..]) as usize;
+        if self.has_extra_fields() {
+            let end = molecule::unpack_number(&slice[36..]) as usize;
+            Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+        } else {
+            Byte32Reader::new_unchecked(&self.as_slice()[start..])
+        }
+    }
+}
+impl<'r> molecule::prelude::Reader<'r> for WithdrawalIntentDataReader<'r> {
+    type Entity = WithdrawalIntentData;
+    const NAME: &'static str = "WithdrawalIntentDataReader";
+    fn to_entity(&self) -> Self::Entity {
+        Self::Entity::new_unchecked(self.as_slice().to_owned().into())
+    }
+    fn new_unchecked(slice: &'r [u8]) -> Self {
+        WithdrawalIntentDataReader(slice)
+    }
+    fn as_slice(&self) -> &'r [u8] {
+        self.0
+    }
+    fn verify(slice: &[u8], compatible: bool) -> molecule::error::VerificationResult<()> {
+        use molecule::verification_error as ve;
+        let slice_len = slice.len();
+        if slice_len < molecule::NUMBER_SIZE {
+            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE, slice_len);
+        }
+        let total_size = molecule::unpack_number(slice) as usize;
+        if slice_len != total_size {
+            return ve!(Self, TotalSizeNotMatch, total_size, slice_len);
+        }
+        if slice_len < molecule::NUMBER_SIZE * 2 {
+            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE * 2, slice_len);
+        }
+        let offset_first = molecule::unpack_number(&slice[molecule::NUMBER_SIZE..]) as usize;
+        if offset_first % molecule::NUMBER_SIZE != 0 || offset_first < molecule::NUMBER_SIZE * 2 {
+            return ve!(Self, OffsetsNotMatch);
+        }
+        if slice_len < offset_first {
+            return ve!(Self, HeaderIsBroken, offset_first, slice_len);
+        }
+        let field_count = offset_first / molecule::NUMBER_SIZE - 1;
+        if field_count < Self::FIELD_COUNT {
+            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
+        } else if !compatible && field_count > Self::FIELD_COUNT {
+            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
+        };
+        let mut offsets: Vec<usize> = slice[molecule::NUMBER_SIZE..offset_first]
+            .chunks_exact(molecule::NUMBER_SIZE)
+            .map(|x| molecule::unpack_number(x) as usize)
+            .collect();
+        offsets.push(total_size);
+        if offsets.windows(2).any(|i| i[0] > i[1]) {
+            return ve!(Self, OffsetsNotMatch);
+        }
+        Byte32Reader::verify(&slice[offsets[0]..offsets[1]], compatible)?;
+        Byte32Reader::verify(&slice[offsets[1]..offsets[2]], compatible)?;
+        Byte32Reader::verify(&slice[offsets[2]..offsets[3]], compatible)?;
+        ByteReader::verify(&slice[offsets[3]..offsets[4]], compatible)?;
+        Byte32Reader::verify(&slice[offsets[4]..offsets[5]], compatible)?;
+        Byte32Reader::verify(&slice[offsets[5]..offsets[6]], compatible)?;
+        Uint64Reader::verify(&slice[offsets[6]..offsets[7]], compatible)?;
+        Byte32Reader::verify(&slice[offsets[7]..offsets[8]], compatible)?;
+        Ok(())
+    }
+}
+#[derive(Clone, Debug, Default)]
+pub struct WithdrawalIntentDataBuilder {
+    pub(crate) xudt_script_hash: Byte32,
+    pub(crate) xudt_lock_script_hash: Byte32,
+    pub(crate) spore_code_hash: Byte32,
+    pub(crate) spore_level: Byte,
+    pub(crate) spore_id: Byte32,
+    pub(crate) cluster_id: Byte32,
+    pub(crate) expire_since: Uint64,
+    pub(crate) owner_script_hash: Byte32,
+}
+impl WithdrawalIntentDataBuilder {
+    pub const FIELD_COUNT: usize = 8;
+    pub fn xudt_script_hash(mut self, v: Byte32) -> Self {
+        self.xudt_script_hash = v;
+        self
+    }
+    pub fn xudt_lock_script_hash(mut self, v: Byte32) -> Self {
+        self.xudt_lock_script_hash = v;
+        self
+    }
+    pub fn spore_code_hash(mut self, v: Byte32) -> Self {
+        self.spore_code_hash = v;
+        self
+    }
+    pub fn spore_level(mut self, v: Byte) -> Self {
+        self.spore_level = v;
+        self
+    }
+    pub fn spore_id(mut self, v: Byte32) -> Self {
+        self.spore_id = v;
+        self
+    }
+    pub fn cluster_id(mut self, v: Byte32) -> Self {
+        self.cluster_id = v;
+        self
+    }
+    pub fn expire_since(mut self, v: Uint64) -> Self {
+        self.expire_since = v;
+        self
+    }
+    pub fn owner_script_hash(mut self, v: Byte32) -> Self {
+        self.owner_script_hash = v;
+        self
+    }
+}
+impl molecule::prelude::Builder for WithdrawalIntentDataBuilder {
+    type Entity = WithdrawalIntentData;
+    const NAME: &'static str = "WithdrawalIntentDataBuilder";
+    fn expected_length(&self) -> usize {
+        molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1)
+            + self.xudt_script_hash.as_slice().len()
+            + self.xudt_lock_script_hash.as_slice().len()
+            + self.spore_code_hash.as_slice().len()
+            + self.spore_level.as_slice().len()
+            + self.spore_id.as_slice().len()
+            + self.cluster_id.as_slice().len()
+            + self.expire_since.as_slice().len()
+            + self.owner_script_hash.as_slice().len()
+    }
+    fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
+        let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
+        let mut offsets = Vec::with_capacity(Self::FIELD_COUNT);
+        offsets.push(total_size);
+        total_size += self.xudt_script_hash.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.xudt_lock_script_hash.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.spore_code_hash.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.spore_level.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.spore_id.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.cluster_id.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.expire_since.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.owner_script_hash.as_slice().len();
+        writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
+        for offset in offsets.into_iter() {
+            writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
+        }
+        writer.write_all(self.xudt_script_hash.as_slice())?;
+        writer.write_all(self.xudt_lock_script_hash.as_slice())?;
+        writer.write_all(self.spore_code_hash.as_slice())?;
+        writer.write_all(self.spore_level.as_slice())?;
+        writer.write_all(self.spore_id.as_slice())?;
+        writer.write_all(self.cluster_id.as_slice())?;
+        writer.write_all(self.expire_since.as_slice())?;
+        writer.write_all(self.owner_script_hash.as_slice())?;
+        Ok(())
+    }
+    fn build(&self) -> Self::Entity {
+        let mut inner = Vec::with_capacity(self.expected_length());
+        self.write(&mut inner)
+            .unwrap_or_else(|_| panic!("{} build should be ok", Self::NAME));
+        WithdrawalIntentData::new_unchecked(inner.into())
     }
 }
 #[derive(Clone)]

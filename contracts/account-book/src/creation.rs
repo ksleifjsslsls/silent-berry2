@@ -115,7 +115,5 @@ pub fn creation(witness_data: AccountBookData) -> Result<(), Error> {
     check_bounds()?;
     check_xudt_cell(&witness_data)?;
     check_cell_data(&witness_data)?;
-
-    log::info!("---creation end---");
     Ok(())
 }

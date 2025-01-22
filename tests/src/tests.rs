@@ -29,7 +29,6 @@ fn def_buy_intent_data(context: &mut Context, dob_data: &DobSellingData) -> BuyI
         )
         .price(DATA_ASSET_AMOUNT.pack())
         .min_capacity(DATA_MIN_CAPACITY.pack())
-        .change_script_hash([0u8; 32].pack())
         .expire_since(1000u64.pack())
         .owner_script_hash([0u8; 32].pack())
         .build()
@@ -524,6 +523,7 @@ fn test_simple_withdrawal_suc() {
             .spore_level((spore_level as u8).into())
             .cluster_id(cluster_id.into())
             .owner_script_hash(out_xudt_lock_script.calc_script_hash())
+            .xudt_lock_script_hash(out_xudt_lock_script.calc_script_hash())
             .build();
         let withdrawal_intent_script = build_withdrawal_intent_script(
             &mut context,

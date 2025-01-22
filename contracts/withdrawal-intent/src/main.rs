@@ -161,7 +161,20 @@ fn program_entry2() -> Result<(), Error> {
         let ret = check_account_book(accountbook_hash);
         if ret.is_ok() {
             let xudt_script_hash: Hash = witness_data.xudt_script_hash().into();
-            let _udt_info = UDTInfo::new(xudt_script_hash)?;
+            let udt_info = UDTInfo::new(xudt_script_hash)?;
+
+            let xudt_lock_script_hash: Hash = witness_data.xudt_lock_script_hash().into();
+            if !udt_info.outputs.iter().any(|(_udt, index)| {
+                if let Ok(hash) = load_cell_lock_hash(*index, Source::Output) {
+                    xudt_lock_script_hash == hash
+                } else {
+                    false
+                }
+            }) {
+                log::error!("Output of xudt_lock_script is wrong");
+                return Err(Error::TxStructure);
+            }
+
             Ok(())
         } else if ret == Err(Error::TxStructure) {
             let since = load_input_since(0, Source::GroupInput)?;
