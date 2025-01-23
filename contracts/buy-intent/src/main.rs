@@ -22,7 +22,7 @@ use ckb_std::{
 };
 use types::error::SilentBerryError as Error;
 use types::{AccountBookCellData, BuyIntentData};
-use utils::{is_not_out_of_bound, load_args_to_hash, Hash};
+use utils::{is_not_out_of_bound, load_args_to_hash, Hash, UDTInfo};
 
 fn is_input() -> Result<bool, Error> {
     let input = is_not_out_of_bound(load_cell_capacity(0, Source::GroupInput))?;
@@ -120,6 +120,88 @@ fn check_account_book(account_book_hash: Hash, price: u128) -> Result<(), Error>
     Ok(())
 }
 
+fn create_intent(witness_data: BuyIntentData, udt_info: UDTInfo) -> Result<(), Error> {
+    let dob_selling = ckb_std::high_level::load_cell_lock_hash(1, Source::Output)?;
+
+    if dob_selling != witness_data.dob_selling_script_hash().as_slice() {
+        log::error!("Dob Selling Script Hash failed");
+        return Err(Error::CheckScript);
+    }
+
+    if udt_info.inputs.len() != 1 {
+        log::error!("xUDT inputs len failed");
+        return Err(Error::CheckXUDT);
+    }
+    if udt_info.outputs.len() != 2 {
+        log::error!("xUDT outputs len failed");
+        return Err(Error::CheckXUDT);
+    }
+
+    if udt_info.inputs[0].1 != 0 || udt_info.outputs[0].1 != 0 || udt_info.outputs[1].1 != 1 {
+        log::error!(
+            "xUDT position failed, inputs: {:?}, output: {:?}",
+            udt_info.inputs,
+            udt_info.outputs
+        );
+        return Err(Error::CheckXUDT);
+    }
+
+    let price: u128 = witness_data.price().unpack();
+    if udt_info.outputs[1].0 != price {
+        log::error!(
+            "Incorrect xUDT payment: Need: {}, Actually: {}",
+            price,
+            udt_info.outputs[0].0
+        );
+        return Err(Error::CheckXUDT);
+    }
+
+    let capacity = load_cell_capacity(2, Source::Output)?;
+
+    let buy_intent_capacity = u64::from_le_bytes(
+        witness_data
+            .min_capacity()
+            .as_slice()
+            .try_into()
+            .map_err(|e| {
+                log::error!("Parse BuyIntentData failed, {:?}", e);
+                Error::Unknow
+            })?,
+    );
+
+    if capacity > buy_intent_capacity {
+        log::error!(
+            "Capacity does not meet transaction needs, required: {}, actual: {}",
+            buy_intent_capacity,
+            capacity
+        );
+        return Err(Error::CapacityError);
+    }
+    Ok(())
+}
+
+fn selling(witness_data: BuyIntentData) -> Result<(), Error> {
+    check_input_dob_selling(witness_data.dob_selling_script_hash().into())?;
+    Ok(())
+}
+
+fn revocation(witness_data: BuyIntentData) -> Result<(), Error> {
+    let since = load_input_since(0, Source::GroupInput)?;
+    let expire_since: u64 = witness_data.expire_since().unpack();
+    if since < expire_since {
+        return Err(Error::CheckScript);
+    }
+
+    let owner_script_hash: Hash = witness_data.owner_script_hash().into();
+    let lock_script_hash = load_cell_lock_hash(1, Source::Output)?;
+    if owner_script_hash != lock_script_hash {
+        log::error!("Revocation failed, not found owner in Output 1");
+        return Err(Error::CheckScript);
+    }
+
+    Ok(())
+}
+
 fn program_entry2() -> Result<(), Error> {
     let is_input = is_input()?;
     let (witness_data, accountbook_hash) = load_verified_data(is_input)?;
@@ -128,82 +210,12 @@ fn program_entry2() -> Result<(), Error> {
     if is_input {
         let ret = check_account_book(accountbook_hash, witness_data.price().unpack());
         if ret.is_ok() {
-            check_input_dob_selling(witness_data.dob_selling_script_hash().into())?;
-            Ok(())
+            selling(witness_data)
         } else {
-            let since = load_input_since(0, Source::GroupInput)?;
-            let expire_since: u64 = witness_data.expire_since().unpack();
-            if since < expire_since {
-                return ret;
-            }
-
-            let owner_script_hash: Hash = witness_data.owner_script_hash().into();
-            let lock_script_hash = load_cell_lock_hash(1, Source::Output)?;
-            if owner_script_hash != lock_script_hash {
-                log::error!("Revocation failed, not found owner in Output 1");
-                return Err(Error::CheckScript);
-            }
-
-            Ok(())
+            revocation(witness_data)
         }
     } else {
-        let dob_selling = ckb_std::high_level::load_cell_lock_hash(1, Source::Output)?;
-
-        if dob_selling != witness_data.dob_selling_script_hash().as_slice() {
-            log::error!("Dob Selling Script Hash failed");
-            return Err(Error::CheckScript);
-        }
-
-        if udt_info.inputs.len() != 1 {
-            log::error!("xUDT inputs len failed");
-            return Err(Error::CheckXUDT);
-        }
-        if udt_info.outputs.len() != 2 {
-            log::error!("xUDT outputs len failed");
-            return Err(Error::CheckXUDT);
-        }
-
-        if udt_info.inputs[0].1 != 0 || udt_info.outputs[0].1 != 0 || udt_info.outputs[1].1 != 1 {
-            log::error!(
-                "xUDT position failed, inputs: {:?}, output: {:?}",
-                udt_info.inputs,
-                udt_info.outputs
-            );
-            return Err(Error::CheckXUDT);
-        }
-
-        let price: u128 = witness_data.price().unpack();
-        if udt_info.outputs[1].0 != price {
-            log::error!(
-                "Incorrect xUDT payment: Need: {}, Actually: {}",
-                price,
-                udt_info.outputs[0].0
-            );
-            return Err(Error::CheckXUDT);
-        }
-
-        let capacity = load_cell_capacity(2, Source::Output)?;
-
-        let buy_intent_capacity = u64::from_le_bytes(
-            witness_data
-                .min_capacity()
-                .as_slice()
-                .try_into()
-                .map_err(|e| {
-                    log::error!("Parse BuyIntentData failed, {:?}", e);
-                    Error::Unknow
-                })?,
-        );
-
-        if capacity > buy_intent_capacity {
-            log::error!(
-                "Capacity does not meet transaction needs, required: {}, actual: {}",
-                buy_intent_capacity,
-                capacity
-            );
-            return Err(Error::CapacityError);
-        }
-        Ok(())
+        create_intent(witness_data, udt_info)
     }
 }
 
