@@ -17,14 +17,9 @@ pub use types::error::SilentBerryError as Error;
 use types::{AccountBookCellData, AccountBookData, Uint128Opt};
 use utils::{get_indexs, load_lock_code_hash, load_type_code_hash, Hash, UDTInfo};
 
-#[path = "selling.rs"]
-mod selling;
-
-#[path = "withdrawal.rs"]
-mod withdrawal;
-
-#[path = "creation.rs"]
 mod creation;
+mod selling;
+mod withdrawal;
 
 fn load_verified_data() -> Result<AccountBookData, Error> {
     let args = utils::load_args_to_hash()?;

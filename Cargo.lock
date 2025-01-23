@@ -13,14 +13,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "account-book-sim"
-version = "0.1.0"
-dependencies = [
- "account-book",
- "ckb-std",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -136,14 +128,6 @@ dependencies = [
  "spore-types",
  "types",
  "utils",
-]
-
-[[package]]
-name = "buy-intent-sim"
-version = "0.1.0"
-dependencies = [
- "buy-intent",
- "ckb-std",
 ]
 
 [[package]]
@@ -768,14 +752,6 @@ dependencies = [
  "ckb-std",
  "types",
  "utils",
-]
-
-[[package]]
-name = "dob-selling-sim"
-version = "0.1.0"
-dependencies = [
- "ckb-std",
- "dob-selling",
 ]
 
 [[package]]
@@ -2019,14 +1995,6 @@ dependencies = [
  "spore-types",
  "types",
  "utils",
-]
-
-[[package]]
-name = "withdrawal-intent-sim"
-version = "0.1.0"
-dependencies = [
- "ckb-std",
- "withdrawal-intent",
 ]
 
 [[package]]
