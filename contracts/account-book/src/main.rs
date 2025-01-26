@@ -1,11 +1,11 @@
 #![cfg_attr(not(any(feature = "native-simulator", test)), no_std)]
 #![cfg_attr(not(test), no_main)]
 
-#[cfg(not(any(feature = "native-simulator", test)))]
 ckb_std::entry!(program_entry);
 #[cfg(not(any(feature = "native-simulator", test)))]
 ckb_std::default_alloc!();
 
+use alloc::vec::Vec;
 use ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::{Builder, Entity, Pack, Unpack},
@@ -212,6 +212,37 @@ fn check_input_type_proxy_lock(
     })?;
 
     Ok((input_amount, output_amount))
+}
+
+fn get_ratios(cell_data: &AccountBookCellData, level: u8) -> Result<Vec<u8>, Error> {
+    // Check Spore Info
+    let ratios = {
+        let buf = cell_data.profit_distribution_ratio().raw_data().to_vec();
+        if buf.len() != level as usize + 2 {
+            log::error!(
+                "The profit_distribution_ratio price in the account book is wrong, it needs: {}, actual: {}",
+                level + 2,
+                buf.len()
+            );
+            return Err(Error::AccountBook);
+        }
+
+        let mut num = 0u64;
+        for it in &buf {
+            num += *it as u64;
+        }
+        if num != 100 {
+            log::error!(
+                "The sum of profit_distribution_ratio({}, {:?}) is not 100, and withdrawal cannot be performed normally",
+                num,
+                &buf
+            );
+            return Err(Error::AccountBook);
+        }
+        buf
+    };
+
+    Ok(ratios)
 }
 
 fn program_entry2() -> Result<(), Error> {

@@ -68,26 +68,7 @@ fn check_cell_data(witness_data: &AccountBookData) -> Result<(), Error> {
     let cell_data = utils::load_account_bool_cell_data(0, Source::GroupOutput)?;
 
     let level: u8 = witness_data.level().into();
-    let ratios = cell_data.profit_distribution_ratio().raw_data().to_vec();
-    if ratios.len() != level as usize + 2 {
-        log::error!(
-            "The profit_distribution_ratio price in the account book is wrong, it needs: {}, actual: {}",
-            level + 2,
-            cell_data.profit_distribution_ratio().raw_data().len()
-        );
-        return Err(Error::AccountBook);
-    }
-    let mut total_ratios = 0usize;
-    for r in ratios {
-        total_ratios += r as usize;
-    }
-    if total_ratios != 100 {
-        log::error!(
-            "The profit_distribution_ratios sum is not 100 ({})",
-            total_ratios
-        );
-        return Err(Error::AccountBook);
-    }
+    let _ratios = crate::get_ratios(&cell_data, level)?;
 
     if cell_data.profit_distribution_number().raw_data().len() != level as usize {
         log::error!(

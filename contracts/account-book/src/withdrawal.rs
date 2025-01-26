@@ -1,43 +1,9 @@
-extern crate alloc;
-
 use super::Error;
-use alloc::vec::Vec;
 use ckb_std::{
     ckb_constants::Source, ckb_types::prelude::Unpack, high_level::load_cell_lock_hash, log,
 };
 use types::{AccountBookCellData, AccountBookData, WithdrawalBuyer, WithdrawalBuyerUnion};
 use utils::{get_indexs, load_type_code_hash, load_withdrawal_data, Hash, SmtKey, UDTInfo};
-
-fn get_ratios(cell_data: &AccountBookCellData, level: u8) -> Result<Vec<u8>, Error> {
-    // Check Spore Info
-    let ratios = {
-        let buf = cell_data.profit_distribution_ratio().raw_data().to_vec();
-        if buf.len() != level as usize + 2 {
-            log::error!(
-                "The profit_distribution_ratio price in the account book is wrong, it needs: {}, actual: {}",
-                level + 2,
-                buf.len()
-            );
-            return Err(Error::AccountBook);
-        }
-
-        let mut num = 0u64;
-        for it in &buf {
-            num += *it as u64;
-        }
-        if num != 100 {
-            log::error!(
-                "The sum of profit_distribution_ratio({}, {:?}) is not 100, and withdrawal cannot be performed normally",
-                num,
-                &buf
-            );
-            return Err(Error::AccountBook);
-        }
-        buf
-    };
-
-    Ok(ratios)
-}
 
 fn get_buyer(hash: Hash) -> Result<WithdrawalBuyer, Error> {
     let indexs = get_indexs(load_type_code_hash, |h| hash == h, Source::Input);
@@ -50,7 +16,7 @@ fn get_total_withdrawn(
     witness_data: &AccountBookData,
 ) -> Result<(u128, SmtKey), Error> {
     let account_book_level: u8 = witness_data.level().into();
-    let ratios = get_ratios(cell_data, account_book_level)?;
+    let ratios = crate::get_ratios(cell_data, account_book_level)?;
 
     let buyer = get_buyer(witness_data.withdrawal_intent_code_hash().into())?;
 
