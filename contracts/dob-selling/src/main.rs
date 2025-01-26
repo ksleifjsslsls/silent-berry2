@@ -93,14 +93,17 @@ fn check_account_book(account_book_hash: Hash) -> Result<(), Error> {
 }
 
 fn check_buy_intent_code_hash(hash: Hash) -> Result<(), Error> {
-    QueryIter::new(load_cell_type, Source::Input).any(|f| {
+    if !QueryIter::new(load_cell_type, Source::Input).any(|f| {
         if f.is_some() {
             let h: Hash = f.unwrap().code_hash().into();
             h == hash
         } else {
             false
         }
-    });
+    }) {
+        log::error!("In the Tx, BuyIntentScript must exist");
+        return Err(Error::CheckScript);
+    }
 
     Ok(())
 }
