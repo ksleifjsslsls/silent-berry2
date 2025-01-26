@@ -14,7 +14,7 @@ use ckb_std::{
     ckb_types::prelude::{Entity, Reader, Unpack},
     high_level::{
         load_cell_capacity, load_cell_data, load_cell_lock_hash, load_cell_type,
-        load_cell_type_hash, load_input_since, QueryIter,
+        load_cell_type_hash, QueryIter,
     },
     log,
 };
@@ -195,8 +195,7 @@ fn withdrawal(witness_data: WithdrawalIntentData) -> Result<(), Error> {
 }
 
 fn revocation(witness_data: WithdrawalIntentData) -> Result<(), Error> {
-    let since = load_input_since(0, Source::GroupInput)?;
-    if since < witness_data.expire_since().unpack() {
+    if !(utils::check_since(0, Source::GroupInput, witness_data.expire_since().unpack())?) {
         return Err(Error::CheckScript);
     }
 

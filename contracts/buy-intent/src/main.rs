@@ -16,8 +16,7 @@ use ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::{Entity, Unpack},
     high_level::{
-        load_cell_capacity, load_cell_data, load_cell_lock_hash, load_cell_type_hash,
-        load_input_since, QueryIter,
+        load_cell_capacity, load_cell_data, load_cell_lock_hash, load_cell_type_hash, QueryIter,
     },
     log::{self},
 };
@@ -143,25 +142,6 @@ fn create_intent(witness_data: BuyIntentData, udt_info: UDTInfo) -> Result<(), E
         log::error!("Dob Selling Script Hash failed");
         return Err(Error::CheckScript);
     }
-
-    if udt_info.inputs.len() != 1 {
-        log::error!("xUDT inputs len failed");
-        return Err(Error::CheckXUDT);
-    }
-    if udt_info.outputs.len() != 2 {
-        log::error!("xUDT outputs len failed");
-        return Err(Error::CheckXUDT);
-    }
-
-    if udt_info.inputs[0].1 != 0 || udt_info.outputs[0].1 != 0 || udt_info.outputs[1].1 != 1 {
-        log::error!(
-            "xUDT position failed, inputs: {:?}, output: {:?}",
-            udt_info.inputs,
-            udt_info.outputs
-        );
-        return Err(Error::CheckXUDT);
-    }
-
     let price: u128 = witness_data.price().unpack();
     if udt_info.outputs[1].0 != price {
         log::error!(
@@ -203,9 +183,7 @@ fn selling(witness_data: BuyIntentData, accountbook_hash: Hash) -> Result<(), Er
 }
 
 fn revocation(witness_data: BuyIntentData, _udt_info: UDTInfo) -> Result<(), Error> {
-    let since = load_input_since(0, Source::GroupInput)?;
-    let expire_since: u64 = witness_data.expire_since().unpack();
-    if since < expire_since {
+    if !(utils::check_since(0, Source::GroupInput, witness_data.expire_since().unpack())?) {
         return Err(Error::CheckScript);
     }
 

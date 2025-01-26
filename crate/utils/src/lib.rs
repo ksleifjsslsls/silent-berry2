@@ -4,6 +4,7 @@ extern crate alloc;
 
 #[cfg(feature = "smt")]
 mod account_book_proof;
+
 #[cfg(feature = "smt")]
 pub use account_book_proof::{AccountBookProof, SmtKey, H256, SMT_ROOT_HASH_INITIAL};
 #[cfg(all(feature = "smt", feature = "std"))]
@@ -192,4 +193,14 @@ pub fn load_withdrawal_data(
 
     types::WithdrawalIntentDataReader::verify(&data, true)?;
     Ok(WithdrawalIntentData::new_unchecked(data))
+}
+
+pub fn check_since(index: usize, source: Source, expire_since: u64) -> Result<bool, Error> {
+    use ckb_std::since::Since;
+
+    let expire_since = Since::new(expire_since);
+    let since = ckb_std::high_level::load_input_since(index, source)?;
+    let since = Since::new(since);
+
+    Ok(since >= expire_since)
 }
