@@ -3,7 +3,7 @@ import blockchain;
 option Uint128Opt (Uint128);
 
 # Witness
-table BuyIntentData {
+struct BuyIntentData {
     dob_selling_script_hash: Byte32,
     xudt_script_hash: Byte32,
     price: Uint128,
@@ -14,7 +14,7 @@ table BuyIntentData {
 }
 
 # Witness
-table DobSellingData {
+struct DobSellingData {
     account_book_script_hash: Byte32,
     spore_code_hash: Byte32,
     spore_data_hash: Byte32,
@@ -22,7 +22,7 @@ table DobSellingData {
     owner_script_hash: Byte32,
 }
 
-table WithdrawalSporeInfo {
+struct WithdrawalSporeInfo {
     spore_code_hash: Byte32,
     spore_level: byte,
     spore_id: Byte32,

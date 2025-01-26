@@ -211,10 +211,6 @@ impl ::core::fmt::Display for BuyIntentData {
         write!(f, ", {}: {}", "min_capacity", self.min_capacity())?;
         write!(f, ", {}: {}", "expire_since", self.expire_since())?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
-        let extra_count = self.count_extra_fields();
-        if extra_count != 0 {
-            write!(f, ", .. ({} fields)", extra_count)?;
-        }
         write!(f, " }}")
     }
 }
@@ -225,70 +221,33 @@ impl ::core::default::Default for BuyIntentData {
     }
 }
 impl BuyIntentData {
-    const DEFAULT_VALUE: [u8; 156] = [
-        156, 0, 0, 0, 28, 0, 0, 0, 60, 0, 0, 0, 92, 0, 0, 0, 108, 0, 0, 0, 116, 0, 0, 0, 124, 0, 0,
+    const DEFAULT_VALUE: [u8; 128] = [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
     ];
+    pub const TOTAL_SIZE: usize = 128;
+    pub const FIELD_SIZES: [usize; 6] = [32, 32, 16, 8, 8, 32];
     pub const FIELD_COUNT: usize = 6;
-    pub fn total_size(&self) -> usize {
-        molecule::unpack_number(self.as_slice()) as usize
-    }
-    pub fn field_count(&self) -> usize {
-        if self.total_size() == molecule::NUMBER_SIZE {
-            0
-        } else {
-            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
-        }
-    }
-    pub fn count_extra_fields(&self) -> usize {
-        self.field_count() - Self::FIELD_COUNT
-    }
-    pub fn has_extra_fields(&self) -> bool {
-        Self::FIELD_COUNT != self.field_count()
-    }
     pub fn dob_selling_script_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[4..]) as usize;
-        let end = molecule::unpack_number(&slice[8..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
+        Byte32::new_unchecked(self.0.slice(0..32))
     }
     pub fn xudt_script_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[8..]) as usize;
-        let end = molecule::unpack_number(&slice[12..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
+        Byte32::new_unchecked(self.0.slice(32..64))
     }
     pub fn price(&self) -> Uint128 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[12..]) as usize;
-        let end = molecule::unpack_number(&slice[16..]) as usize;
-        Uint128::new_unchecked(self.0.slice(start..end))
+        Uint128::new_unchecked(self.0.slice(64..80))
     }
     pub fn min_capacity(&self) -> Uint64 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[16..]) as usize;
-        let end = molecule::unpack_number(&slice[20..]) as usize;
-        Uint64::new_unchecked(self.0.slice(start..end))
+        Uint64::new_unchecked(self.0.slice(80..88))
     }
     pub fn expire_since(&self) -> Uint64 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[20..]) as usize;
-        let end = molecule::unpack_number(&slice[24..]) as usize;
-        Uint64::new_unchecked(self.0.slice(start..end))
+        Uint64::new_unchecked(self.0.slice(88..96))
     }
     pub fn owner_script_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[24..]) as usize;
-        if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[28..]) as usize;
-            Byte32::new_unchecked(self.0.slice(start..end))
-        } else {
-            Byte32::new_unchecked(self.0.slice(start..))
-        }
+        Byte32::new_unchecked(self.0.slice(96..128))
     }
     pub fn as_reader<'r>(&'r self) -> BuyIntentDataReader<'r> {
         BuyIntentDataReader::new_unchecked(self.as_slice())
@@ -355,70 +314,30 @@ impl<'r> ::core::fmt::Display for BuyIntentDataReader<'r> {
         write!(f, ", {}: {}", "min_capacity", self.min_capacity())?;
         write!(f, ", {}: {}", "expire_since", self.expire_since())?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
-        let extra_count = self.count_extra_fields();
-        if extra_count != 0 {
-            write!(f, ", .. ({} fields)", extra_count)?;
-        }
         write!(f, " }}")
     }
 }
 impl<'r> BuyIntentDataReader<'r> {
+    pub const TOTAL_SIZE: usize = 128;
+    pub const FIELD_SIZES: [usize; 6] = [32, 32, 16, 8, 8, 32];
     pub const FIELD_COUNT: usize = 6;
-    pub fn total_size(&self) -> usize {
-        molecule::unpack_number(self.as_slice()) as usize
-    }
-    pub fn field_count(&self) -> usize {
-        if self.total_size() == molecule::NUMBER_SIZE {
-            0
-        } else {
-            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
-        }
-    }
-    pub fn count_extra_fields(&self) -> usize {
-        self.field_count() - Self::FIELD_COUNT
-    }
-    pub fn has_extra_fields(&self) -> bool {
-        Self::FIELD_COUNT != self.field_count()
-    }
     pub fn dob_selling_script_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[4..]) as usize;
-        let end = molecule::unpack_number(&slice[8..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+        Byte32Reader::new_unchecked(&self.as_slice()[0..32])
     }
     pub fn xudt_script_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[8..]) as usize;
-        let end = molecule::unpack_number(&slice[12..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+        Byte32Reader::new_unchecked(&self.as_slice()[32..64])
     }
     pub fn price(&self) -> Uint128Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[12..]) as usize;
-        let end = molecule::unpack_number(&slice[16..]) as usize;
-        Uint128Reader::new_unchecked(&self.as_slice()[start..end])
+        Uint128Reader::new_unchecked(&self.as_slice()[64..80])
     }
     pub fn min_capacity(&self) -> Uint64Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[16..]) as usize;
-        let end = molecule::unpack_number(&slice[20..]) as usize;
-        Uint64Reader::new_unchecked(&self.as_slice()[start..end])
+        Uint64Reader::new_unchecked(&self.as_slice()[80..88])
     }
     pub fn expire_since(&self) -> Uint64Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[20..]) as usize;
-        let end = molecule::unpack_number(&slice[24..]) as usize;
-        Uint64Reader::new_unchecked(&self.as_slice()[start..end])
+        Uint64Reader::new_unchecked(&self.as_slice()[88..96])
     }
     pub fn owner_script_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[24..]) as usize;
-        if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[28..]) as usize;
-            Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-        } else {
-            Byte32Reader::new_unchecked(&self.as_slice()[start..])
-        }
+        Byte32Reader::new_unchecked(&self.as_slice()[96..128])
     }
 }
 impl<'r> molecule::prelude::Reader<'r> for BuyIntentDataReader<'r> {
@@ -433,46 +352,12 @@ impl<'r> molecule::prelude::Reader<'r> for BuyIntentDataReader<'r> {
     fn as_slice(&self) -> &'r [u8] {
         self.0
     }
-    fn verify(slice: &[u8], compatible: bool) -> molecule::error::VerificationResult<()> {
+    fn verify(slice: &[u8], _compatible: bool) -> molecule::error::VerificationResult<()> {
         use molecule::verification_error as ve;
         let slice_len = slice.len();
-        if slice_len < molecule::NUMBER_SIZE {
-            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE, slice_len);
+        if slice_len != Self::TOTAL_SIZE {
+            return ve!(Self, TotalSizeNotMatch, Self::TOTAL_SIZE, slice_len);
         }
-        let total_size = molecule::unpack_number(slice) as usize;
-        if slice_len != total_size {
-            return ve!(Self, TotalSizeNotMatch, total_size, slice_len);
-        }
-        if slice_len < molecule::NUMBER_SIZE * 2 {
-            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE * 2, slice_len);
-        }
-        let offset_first = molecule::unpack_number(&slice[molecule::NUMBER_SIZE..]) as usize;
-        if offset_first % molecule::NUMBER_SIZE != 0 || offset_first < molecule::NUMBER_SIZE * 2 {
-            return ve!(Self, OffsetsNotMatch);
-        }
-        if slice_len < offset_first {
-            return ve!(Self, HeaderIsBroken, offset_first, slice_len);
-        }
-        let field_count = offset_first / molecule::NUMBER_SIZE - 1;
-        if field_count < Self::FIELD_COUNT {
-            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
-        } else if !compatible && field_count > Self::FIELD_COUNT {
-            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
-        };
-        let mut offsets: Vec<usize> = slice[molecule::NUMBER_SIZE..offset_first]
-            .chunks_exact(molecule::NUMBER_SIZE)
-            .map(|x| molecule::unpack_number(x) as usize)
-            .collect();
-        offsets.push(total_size);
-        if offsets.windows(2).any(|i| i[0] > i[1]) {
-            return ve!(Self, OffsetsNotMatch);
-        }
-        Byte32Reader::verify(&slice[offsets[0]..offsets[1]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[1]..offsets[2]], compatible)?;
-        Uint128Reader::verify(&slice[offsets[2]..offsets[3]], compatible)?;
-        Uint64Reader::verify(&slice[offsets[3]..offsets[4]], compatible)?;
-        Uint64Reader::verify(&slice[offsets[4]..offsets[5]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[5]..offsets[6]], compatible)?;
         Ok(())
     }
 }
@@ -486,6 +371,8 @@ pub struct BuyIntentDataBuilder {
     pub(crate) owner_script_hash: Byte32,
 }
 impl BuyIntentDataBuilder {
+    pub const TOTAL_SIZE: usize = 128;
+    pub const FIELD_SIZES: [usize; 6] = [32, 32, 16, 8, 8, 32];
     pub const FIELD_COUNT: usize = 6;
     pub fn dob_selling_script_hash(mut self, v: Byte32) -> Self {
         self.dob_selling_script_hash = v;
@@ -516,33 +403,9 @@ impl molecule::prelude::Builder for BuyIntentDataBuilder {
     type Entity = BuyIntentData;
     const NAME: &'static str = "BuyIntentDataBuilder";
     fn expected_length(&self) -> usize {
-        molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1)
-            + self.dob_selling_script_hash.as_slice().len()
-            + self.xudt_script_hash.as_slice().len()
-            + self.price.as_slice().len()
-            + self.min_capacity.as_slice().len()
-            + self.expire_since.as_slice().len()
-            + self.owner_script_hash.as_slice().len()
+        Self::TOTAL_SIZE
     }
     fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
-        let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
-        let mut offsets = Vec::with_capacity(Self::FIELD_COUNT);
-        offsets.push(total_size);
-        total_size += self.dob_selling_script_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.xudt_script_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.price.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.min_capacity.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.expire_since.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.owner_script_hash.as_slice().len();
-        writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
-        for offset in offsets.into_iter() {
-            writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
-        }
         writer.write_all(self.dob_selling_script_hash.as_slice())?;
         writer.write_all(self.xudt_script_hash.as_slice())?;
         writer.write_all(self.price.as_slice())?;
@@ -592,10 +455,6 @@ impl ::core::fmt::Display for DobSellingData {
             self.buy_intent_code_hash()
         )?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
-        let extra_count = self.count_extra_fields();
-        if extra_count != 0 {
-            write!(f, ", .. ({} fields)", extra_count)?;
-        }
         write!(f, " }}")
     }
 }
@@ -606,65 +465,31 @@ impl ::core::default::Default for DobSellingData {
     }
 }
 impl DobSellingData {
-    const DEFAULT_VALUE: [u8; 184] = [
-        184, 0, 0, 0, 24, 0, 0, 0, 56, 0, 0, 0, 88, 0, 0, 0, 120, 0, 0, 0, 152, 0, 0, 0, 0, 0, 0,
+    const DEFAULT_VALUE: [u8; 160] = [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
+    pub const TOTAL_SIZE: usize = 160;
+    pub const FIELD_SIZES: [usize; 5] = [32, 32, 32, 32, 32];
     pub const FIELD_COUNT: usize = 5;
-    pub fn total_size(&self) -> usize {
-        molecule::unpack_number(self.as_slice()) as usize
-    }
-    pub fn field_count(&self) -> usize {
-        if self.total_size() == molecule::NUMBER_SIZE {
-            0
-        } else {
-            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
-        }
-    }
-    pub fn count_extra_fields(&self) -> usize {
-        self.field_count() - Self::FIELD_COUNT
-    }
-    pub fn has_extra_fields(&self) -> bool {
-        Self::FIELD_COUNT != self.field_count()
-    }
     pub fn account_book_script_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[4..]) as usize;
-        let end = molecule::unpack_number(&slice[8..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
+        Byte32::new_unchecked(self.0.slice(0..32))
     }
     pub fn spore_code_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[8..]) as usize;
-        let end = molecule::unpack_number(&slice[12..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
+        Byte32::new_unchecked(self.0.slice(32..64))
     }
     pub fn spore_data_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[12..]) as usize;
-        let end = molecule::unpack_number(&slice[16..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
+        Byte32::new_unchecked(self.0.slice(64..96))
     }
     pub fn buy_intent_code_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[16..]) as usize;
-        let end = molecule::unpack_number(&slice[20..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
+        Byte32::new_unchecked(self.0.slice(96..128))
     }
     pub fn owner_script_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[20..]) as usize;
-        if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[24..]) as usize;
-            Byte32::new_unchecked(self.0.slice(start..end))
-        } else {
-            Byte32::new_unchecked(self.0.slice(start..))
-        }
+        Byte32::new_unchecked(self.0.slice(128..160))
     }
     pub fn as_reader<'r>(&'r self) -> DobSellingDataReader<'r> {
         DobSellingDataReader::new_unchecked(self.as_slice())
@@ -734,64 +559,27 @@ impl<'r> ::core::fmt::Display for DobSellingDataReader<'r> {
             self.buy_intent_code_hash()
         )?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
-        let extra_count = self.count_extra_fields();
-        if extra_count != 0 {
-            write!(f, ", .. ({} fields)", extra_count)?;
-        }
         write!(f, " }}")
     }
 }
 impl<'r> DobSellingDataReader<'r> {
+    pub const TOTAL_SIZE: usize = 160;
+    pub const FIELD_SIZES: [usize; 5] = [32, 32, 32, 32, 32];
     pub const FIELD_COUNT: usize = 5;
-    pub fn total_size(&self) -> usize {
-        molecule::unpack_number(self.as_slice()) as usize
-    }
-    pub fn field_count(&self) -> usize {
-        if self.total_size() == molecule::NUMBER_SIZE {
-            0
-        } else {
-            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
-        }
-    }
-    pub fn count_extra_fields(&self) -> usize {
-        self.field_count() - Self::FIELD_COUNT
-    }
-    pub fn has_extra_fields(&self) -> bool {
-        Self::FIELD_COUNT != self.field_count()
-    }
     pub fn account_book_script_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[4..]) as usize;
-        let end = molecule::unpack_number(&slice[8..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+        Byte32Reader::new_unchecked(&self.as_slice()[0..32])
     }
     pub fn spore_code_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[8..]) as usize;
-        let end = molecule::unpack_number(&slice[12..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+        Byte32Reader::new_unchecked(&self.as_slice()[32..64])
     }
     pub fn spore_data_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[12..]) as usize;
-        let end = molecule::unpack_number(&slice[16..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+        Byte32Reader::new_unchecked(&self.as_slice()[64..96])
     }
     pub fn buy_intent_code_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[16..]) as usize;
-        let end = molecule::unpack_number(&slice[20..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+        Byte32Reader::new_unchecked(&self.as_slice()[96..128])
     }
     pub fn owner_script_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[20..]) as usize;
-        if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[24..]) as usize;
-            Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-        } else {
-            Byte32Reader::new_unchecked(&self.as_slice()[start..])
-        }
+        Byte32Reader::new_unchecked(&self.as_slice()[128..160])
     }
 }
 impl<'r> molecule::prelude::Reader<'r> for DobSellingDataReader<'r> {
@@ -806,45 +594,12 @@ impl<'r> molecule::prelude::Reader<'r> for DobSellingDataReader<'r> {
     fn as_slice(&self) -> &'r [u8] {
         self.0
     }
-    fn verify(slice: &[u8], compatible: bool) -> molecule::error::VerificationResult<()> {
+    fn verify(slice: &[u8], _compatible: bool) -> molecule::error::VerificationResult<()> {
         use molecule::verification_error as ve;
         let slice_len = slice.len();
-        if slice_len < molecule::NUMBER_SIZE {
-            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE, slice_len);
+        if slice_len != Self::TOTAL_SIZE {
+            return ve!(Self, TotalSizeNotMatch, Self::TOTAL_SIZE, slice_len);
         }
-        let total_size = molecule::unpack_number(slice) as usize;
-        if slice_len != total_size {
-            return ve!(Self, TotalSizeNotMatch, total_size, slice_len);
-        }
-        if slice_len < molecule::NUMBER_SIZE * 2 {
-            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE * 2, slice_len);
-        }
-        let offset_first = molecule::unpack_number(&slice[molecule::NUMBER_SIZE..]) as usize;
-        if offset_first % molecule::NUMBER_SIZE != 0 || offset_first < molecule::NUMBER_SIZE * 2 {
-            return ve!(Self, OffsetsNotMatch);
-        }
-        if slice_len < offset_first {
-            return ve!(Self, HeaderIsBroken, offset_first, slice_len);
-        }
-        let field_count = offset_first / molecule::NUMBER_SIZE - 1;
-        if field_count < Self::FIELD_COUNT {
-            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
-        } else if !compatible && field_count > Self::FIELD_COUNT {
-            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
-        };
-        let mut offsets: Vec<usize> = slice[molecule::NUMBER_SIZE..offset_first]
-            .chunks_exact(molecule::NUMBER_SIZE)
-            .map(|x| molecule::unpack_number(x) as usize)
-            .collect();
-        offsets.push(total_size);
-        if offsets.windows(2).any(|i| i[0] > i[1]) {
-            return ve!(Self, OffsetsNotMatch);
-        }
-        Byte32Reader::verify(&slice[offsets[0]..offsets[1]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[1]..offsets[2]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[2]..offsets[3]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[3]..offsets[4]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[4]..offsets[5]], compatible)?;
         Ok(())
     }
 }
@@ -857,6 +612,8 @@ pub struct DobSellingDataBuilder {
     pub(crate) owner_script_hash: Byte32,
 }
 impl DobSellingDataBuilder {
+    pub const TOTAL_SIZE: usize = 160;
+    pub const FIELD_SIZES: [usize; 5] = [32, 32, 32, 32, 32];
     pub const FIELD_COUNT: usize = 5;
     pub fn account_book_script_hash(mut self, v: Byte32) -> Self {
         self.account_book_script_hash = v;
@@ -883,30 +640,9 @@ impl molecule::prelude::Builder for DobSellingDataBuilder {
     type Entity = DobSellingData;
     const NAME: &'static str = "DobSellingDataBuilder";
     fn expected_length(&self) -> usize {
-        molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1)
-            + self.account_book_script_hash.as_slice().len()
-            + self.spore_code_hash.as_slice().len()
-            + self.spore_data_hash.as_slice().len()
-            + self.buy_intent_code_hash.as_slice().len()
-            + self.owner_script_hash.as_slice().len()
+        Self::TOTAL_SIZE
     }
     fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
-        let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
-        let mut offsets = Vec::with_capacity(Self::FIELD_COUNT);
-        offsets.push(total_size);
-        total_size += self.account_book_script_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.spore_code_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.spore_data_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.buy_intent_code_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.owner_script_hash.as_slice().len();
-        writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
-        for offset in offsets.into_iter() {
-            writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
-        }
         writer.write_all(self.account_book_script_hash.as_slice())?;
         writer.write_all(self.spore_code_hash.as_slice())?;
         writer.write_all(self.spore_data_hash.as_slice())?;
@@ -944,10 +680,6 @@ impl ::core::fmt::Display for WithdrawalSporeInfo {
         write!(f, ", {}: {}", "spore_level", self.spore_level())?;
         write!(f, ", {}: {}", "spore_id", self.spore_id())?;
         write!(f, ", {}: {}", "cluster_id", self.cluster_id())?;
-        let extra_count = self.count_extra_fields();
-        if extra_count != 0 {
-            write!(f, ", .. ({} fields)", extra_count)?;
-        }
         write!(f, " }}")
     }
 }
@@ -958,56 +690,26 @@ impl ::core::default::Default for WithdrawalSporeInfo {
     }
 }
 impl WithdrawalSporeInfo {
-    const DEFAULT_VALUE: [u8; 117] = [
-        117, 0, 0, 0, 20, 0, 0, 0, 52, 0, 0, 0, 53, 0, 0, 0, 85, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    const DEFAULT_VALUE: [u8; 97] = [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0,
     ];
+    pub const TOTAL_SIZE: usize = 97;
+    pub const FIELD_SIZES: [usize; 4] = [32, 1, 32, 32];
     pub const FIELD_COUNT: usize = 4;
-    pub fn total_size(&self) -> usize {
-        molecule::unpack_number(self.as_slice()) as usize
-    }
-    pub fn field_count(&self) -> usize {
-        if self.total_size() == molecule::NUMBER_SIZE {
-            0
-        } else {
-            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
-        }
-    }
-    pub fn count_extra_fields(&self) -> usize {
-        self.field_count() - Self::FIELD_COUNT
-    }
-    pub fn has_extra_fields(&self) -> bool {
-        Self::FIELD_COUNT != self.field_count()
-    }
     pub fn spore_code_hash(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[4..]) as usize;
-        let end = molecule::unpack_number(&slice[8..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
+        Byte32::new_unchecked(self.0.slice(0..32))
     }
     pub fn spore_level(&self) -> Byte {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[8..]) as usize;
-        let end = molecule::unpack_number(&slice[12..]) as usize;
-        Byte::new_unchecked(self.0.slice(start..end))
+        Byte::new_unchecked(self.0.slice(32..33))
     }
     pub fn spore_id(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[12..]) as usize;
-        let end = molecule::unpack_number(&slice[16..]) as usize;
-        Byte32::new_unchecked(self.0.slice(start..end))
+        Byte32::new_unchecked(self.0.slice(33..65))
     }
     pub fn cluster_id(&self) -> Byte32 {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[16..]) as usize;
-        if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[20..]) as usize;
-            Byte32::new_unchecked(self.0.slice(start..end))
-        } else {
-            Byte32::new_unchecked(self.0.slice(start..))
-        }
+        Byte32::new_unchecked(self.0.slice(65..97))
     }
     pub fn as_reader<'r>(&'r self) -> WithdrawalSporeInfoReader<'r> {
         WithdrawalSporeInfoReader::new_unchecked(self.as_slice())
@@ -1065,58 +767,24 @@ impl<'r> ::core::fmt::Display for WithdrawalSporeInfoReader<'r> {
         write!(f, ", {}: {}", "spore_level", self.spore_level())?;
         write!(f, ", {}: {}", "spore_id", self.spore_id())?;
         write!(f, ", {}: {}", "cluster_id", self.cluster_id())?;
-        let extra_count = self.count_extra_fields();
-        if extra_count != 0 {
-            write!(f, ", .. ({} fields)", extra_count)?;
-        }
         write!(f, " }}")
     }
 }
 impl<'r> WithdrawalSporeInfoReader<'r> {
+    pub const TOTAL_SIZE: usize = 97;
+    pub const FIELD_SIZES: [usize; 4] = [32, 1, 32, 32];
     pub const FIELD_COUNT: usize = 4;
-    pub fn total_size(&self) -> usize {
-        molecule::unpack_number(self.as_slice()) as usize
-    }
-    pub fn field_count(&self) -> usize {
-        if self.total_size() == molecule::NUMBER_SIZE {
-            0
-        } else {
-            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
-        }
-    }
-    pub fn count_extra_fields(&self) -> usize {
-        self.field_count() - Self::FIELD_COUNT
-    }
-    pub fn has_extra_fields(&self) -> bool {
-        Self::FIELD_COUNT != self.field_count()
-    }
     pub fn spore_code_hash(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[4..]) as usize;
-        let end = molecule::unpack_number(&slice[8..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+        Byte32Reader::new_unchecked(&self.as_slice()[0..32])
     }
     pub fn spore_level(&self) -> ByteReader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[8..]) as usize;
-        let end = molecule::unpack_number(&slice[12..]) as usize;
-        ByteReader::new_unchecked(&self.as_slice()[start..end])
+        ByteReader::new_unchecked(&self.as_slice()[32..33])
     }
     pub fn spore_id(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[12..]) as usize;
-        let end = molecule::unpack_number(&slice[16..]) as usize;
-        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+        Byte32Reader::new_unchecked(&self.as_slice()[33..65])
     }
     pub fn cluster_id(&self) -> Byte32Reader<'r> {
-        let slice = self.as_slice();
-        let start = molecule::unpack_number(&slice[16..]) as usize;
-        if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[20..]) as usize;
-            Byte32Reader::new_unchecked(&self.as_slice()[start..end])
-        } else {
-            Byte32Reader::new_unchecked(&self.as_slice()[start..])
-        }
+        Byte32Reader::new_unchecked(&self.as_slice()[65..97])
     }
 }
 impl<'r> molecule::prelude::Reader<'r> for WithdrawalSporeInfoReader<'r> {
@@ -1131,44 +799,12 @@ impl<'r> molecule::prelude::Reader<'r> for WithdrawalSporeInfoReader<'r> {
     fn as_slice(&self) -> &'r [u8] {
         self.0
     }
-    fn verify(slice: &[u8], compatible: bool) -> molecule::error::VerificationResult<()> {
+    fn verify(slice: &[u8], _compatible: bool) -> molecule::error::VerificationResult<()> {
         use molecule::verification_error as ve;
         let slice_len = slice.len();
-        if slice_len < molecule::NUMBER_SIZE {
-            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE, slice_len);
+        if slice_len != Self::TOTAL_SIZE {
+            return ve!(Self, TotalSizeNotMatch, Self::TOTAL_SIZE, slice_len);
         }
-        let total_size = molecule::unpack_number(slice) as usize;
-        if slice_len != total_size {
-            return ve!(Self, TotalSizeNotMatch, total_size, slice_len);
-        }
-        if slice_len < molecule::NUMBER_SIZE * 2 {
-            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE * 2, slice_len);
-        }
-        let offset_first = molecule::unpack_number(&slice[molecule::NUMBER_SIZE..]) as usize;
-        if offset_first % molecule::NUMBER_SIZE != 0 || offset_first < molecule::NUMBER_SIZE * 2 {
-            return ve!(Self, OffsetsNotMatch);
-        }
-        if slice_len < offset_first {
-            return ve!(Self, HeaderIsBroken, offset_first, slice_len);
-        }
-        let field_count = offset_first / molecule::NUMBER_SIZE - 1;
-        if field_count < Self::FIELD_COUNT {
-            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
-        } else if !compatible && field_count > Self::FIELD_COUNT {
-            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
-        };
-        let mut offsets: Vec<usize> = slice[molecule::NUMBER_SIZE..offset_first]
-            .chunks_exact(molecule::NUMBER_SIZE)
-            .map(|x| molecule::unpack_number(x) as usize)
-            .collect();
-        offsets.push(total_size);
-        if offsets.windows(2).any(|i| i[0] > i[1]) {
-            return ve!(Self, OffsetsNotMatch);
-        }
-        Byte32Reader::verify(&slice[offsets[0]..offsets[1]], compatible)?;
-        ByteReader::verify(&slice[offsets[1]..offsets[2]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[2]..offsets[3]], compatible)?;
-        Byte32Reader::verify(&slice[offsets[3]..offsets[4]], compatible)?;
         Ok(())
     }
 }
@@ -1180,6 +816,8 @@ pub struct WithdrawalSporeInfoBuilder {
     pub(crate) cluster_id: Byte32,
 }
 impl WithdrawalSporeInfoBuilder {
+    pub const TOTAL_SIZE: usize = 97;
+    pub const FIELD_SIZES: [usize; 4] = [32, 1, 32, 32];
     pub const FIELD_COUNT: usize = 4;
     pub fn spore_code_hash(mut self, v: Byte32) -> Self {
         self.spore_code_hash = v;
@@ -1202,27 +840,9 @@ impl molecule::prelude::Builder for WithdrawalSporeInfoBuilder {
     type Entity = WithdrawalSporeInfo;
     const NAME: &'static str = "WithdrawalSporeInfoBuilder";
     fn expected_length(&self) -> usize {
-        molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1)
-            + self.spore_code_hash.as_slice().len()
-            + self.spore_level.as_slice().len()
-            + self.spore_id.as_slice().len()
-            + self.cluster_id.as_slice().len()
+        Self::TOTAL_SIZE
     }
     fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
-        let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
-        let mut offsets = Vec::with_capacity(Self::FIELD_COUNT);
-        offsets.push(total_size);
-        total_size += self.spore_code_hash.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.spore_level.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.spore_id.as_slice().len();
-        offsets.push(total_size);
-        total_size += self.cluster_id.as_slice().len();
-        writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
-        for offset in offsets.into_iter() {
-            writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
-        }
         writer.write_all(self.spore_code_hash.as_slice())?;
         writer.write_all(self.spore_level.as_slice())?;
         writer.write_all(self.spore_id.as_slice())?;
@@ -1266,12 +886,11 @@ impl ::core::default::Default for WithdrawalBuyer {
     }
 }
 impl WithdrawalBuyer {
-    const DEFAULT_VALUE: [u8; 121] = [
-        0, 0, 0, 0, 117, 0, 0, 0, 20, 0, 0, 0, 52, 0, 0, 0, 53, 0, 0, 0, 85, 0, 0, 0, 0, 0, 0, 0,
+    const DEFAULT_VALUE: [u8; 101] = [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
     pub const ITEMS_COUNT: usize = 2;
     pub fn item_id(&self) -> molecule::Number {
@@ -1590,16 +1209,15 @@ impl ::core::default::Default for WithdrawalIntentData {
     }
 }
 impl WithdrawalIntentData {
-    const DEFAULT_VALUE: [u8; 249] = [
-        249, 0, 0, 0, 24, 0, 0, 0, 56, 0, 0, 0, 88, 0, 0, 0, 209, 0, 0, 0, 217, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 117, 0, 0, 0, 20, 0, 0, 0, 52, 0, 0, 0, 53, 0, 0, 0, 85, 0, 0, 0, 0, 0, 0,
+    const DEFAULT_VALUE: [u8; 229] = [
+        229, 0, 0, 0, 24, 0, 0, 0, 56, 0, 0, 0, 88, 0, 0, 0, 189, 0, 0, 0, 197, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
     pub const FIELD_COUNT: usize = 5;
     pub fn total_size(&self) -> usize {
