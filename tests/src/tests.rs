@@ -456,7 +456,7 @@ fn test_simple_withdrawal_suc() {
 
     let account_book_script = build_account_book_script(&mut context, account_book_data.clone());
     let tx = {
-        let input_proxy_script = build_input_proxy_script(
+        let proxy_lock_script = build_proxy_lock_script(
             &mut context,
             account_book_script
                 .as_ref()
@@ -469,7 +469,7 @@ fn test_simple_withdrawal_suc() {
             context.create_cell(
                 CellOutput::new_builder()
                     .capacity(16.pack())
-                    .lock(input_proxy_script.clone())
+                    .lock(proxy_lock_script.clone())
                     .type_(xudt_script.clone().pack())
                     .build(),
                 old_total_udt.to_le_bytes().to_vec().into(),
@@ -478,7 +478,7 @@ fn test_simple_withdrawal_suc() {
         let output_cell = {
             CellOutput::new_builder()
                 .capacity(16.pack())
-                .lock(input_proxy_script.clone())
+                .lock(proxy_lock_script.clone())
                 .type_(xudt_script.pack())
                 .build()
         };
@@ -676,7 +676,7 @@ fn create_account_book() {
 
     let xudt_cell = {
         let lock_script =
-            build_input_proxy_script(&mut context, account_book_script.calc_script_hash().into());
+            build_proxy_lock_script(&mut context, account_book_script.calc_script_hash().into());
         build_xudt_cell(&mut context, lock_script)
     };
 

@@ -109,7 +109,7 @@ pub fn build_xudt_cell(context: &mut Context, lock_script: Script) -> CellOutput
         .build()
 }
 
-pub fn build_input_proxy_script(context: &mut Context, type_script_hash: Hash) -> Script {
+pub fn build_proxy_lock_script(context: &mut Context, type_script_hash: Hash) -> Script {
     let out_point = context.deploy_cell_by_name(INPUT_TYPE_PROXY_LOCK_NAME);
     context
         .build_script_with_hash_type(&out_point, ScriptHashType::Data1, type_script_hash.into())
@@ -181,7 +181,7 @@ pub fn build_account_book(
     let account_book_script = build_account_book_script(context, data.clone());
     let xudt_script = build_xudt_script(context);
     let account_book_lock_script = build_always_suc_script(context, &[]);
-    let input_proxy_script = build_input_proxy_script(
+    let proxy_lock_script = build_proxy_lock_script(
         context,
         account_book_script
             .as_ref()
@@ -192,7 +192,7 @@ pub fn build_account_book(
 
     let cell_output = CellOutput::new_builder()
         .capacity(16.pack())
-        .lock(input_proxy_script)
+        .lock(proxy_lock_script)
         .type_(xudt_script.pack())
         .build();
     let cell_output2 = CellOutput::new_builder()

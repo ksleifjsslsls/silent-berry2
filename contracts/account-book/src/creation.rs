@@ -10,14 +10,14 @@ use types::AccountBookData;
 use utils::{AccountBookProof, Hash, SmtKey};
 
 fn check_xudt_cell(witness_data: &AccountBookData) -> Result<(), Error> {
-    let input_proxy = load_cell_lock(0, Source::Output)?;
-    let input_proxy_code_hash: Hash = input_proxy.code_hash().into();
-    if input_proxy_code_hash != (witness_data.input_type_proxy_lock_code_hash()) {
+    let proxy_lock = load_cell_lock(0, Source::Output)?;
+    let proxy_lock_code_hash: Hash = proxy_lock.code_hash().into();
+    if proxy_lock_code_hash != (witness_data.input_type_proxy_lock_code_hash()) {
         log::error!("input_type_proxy_lock code hash verification failed");
         return Err(Error::TxStructure);
     }
 
-    let script_hash: Hash = input_proxy.args().try_into()?;
+    let script_hash: Hash = proxy_lock.args().try_into()?;
     if script_hash != load_cell_type_hash(0, Source::GroupOutput)? {
         log::error!("input_type_proxy_lock args does not point to Account book script");
         return Err(Error::TxStructure);

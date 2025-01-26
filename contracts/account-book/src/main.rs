@@ -158,10 +158,10 @@ fn check_input_type_proxy_lock(
         })?
         .into();
 
-    let input_proxy_code_hash: Hash = witness_data.input_type_proxy_lock_code_hash().into();
+    let proxy_lock_code_hash: Hash = witness_data.input_type_proxy_lock_code_hash().into();
     let indexs = get_indexs(
         load_lock_code_hash,
-        |h| input_proxy_code_hash == h,
+        |h| proxy_lock_code_hash == h,
         Source::Input,
     );
     if indexs.len() != 1 {
@@ -172,7 +172,7 @@ fn check_input_type_proxy_lock(
     let mut input_amount = None;
     for (udt, index) in &udt_info.inputs {
         let script = load_cell_lock(*index, Source::Input)?;
-        if input_proxy_code_hash != script.code_hash() {
+        if proxy_lock_code_hash != script.code_hash() {
             continue;
         }
         let account_book_script_hash: Hash = script.args().raw_data().try_into()?;
@@ -193,7 +193,7 @@ fn check_input_type_proxy_lock(
     let mut output_amount: Option<u128> = None;
     for (udt, index) in &udt_info.outputs {
         let script = load_cell_lock(*index, Source::Output)?;
-        if input_proxy_code_hash != script.code_hash() {
+        if proxy_lock_code_hash != script.code_hash() {
             continue;
         }
         let account_book_script_hash: Hash = script.args().raw_data().try_into()?;
