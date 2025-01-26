@@ -3,41 +3,10 @@ extern crate alloc;
 use super::Error;
 use alloc::vec::Vec;
 use ckb_std::{
-    ckb_constants::Source,
-    ckb_types::prelude::{Entity, Reader, Unpack},
-    high_level::{load_cell_lock_hash, load_witness_args, QueryIter},
-    log,
+    ckb_constants::Source, ckb_types::prelude::Unpack, high_level::load_cell_lock_hash, log,
 };
-use types::{AccountBookCellData, AccountBookData};
-use utils::{get_indexs, load_type_code_hash, Hash, SmtKey, UDTInfo};
-
-fn is_platform(cell_data: &AccountBookCellData) -> Result<bool, Error> {
-    let hash: Hash = cell_data.platform_id().into();
-
-    let has_input =
-        QueryIter::new(load_cell_lock_hash, Source::Input).any(|script_hash| hash == script_hash);
-    if !has_input {
-        return Ok(false);
-    }
-
-    let has_output =
-        QueryIter::new(load_cell_lock_hash, Source::Output).any(|script_hash| hash == script_hash);
-    Ok(has_output)
-}
-
-fn is_auther(cell_data: &AccountBookCellData) -> Result<bool, Error> {
-    let hash: Hash = cell_data.auther_id().into();
-
-    let has_input =
-        QueryIter::new(load_cell_lock_hash, Source::Input).any(|script_hash| hash == script_hash);
-    if !has_input {
-        return Ok(false);
-    }
-
-    let has_output =
-        QueryIter::new(load_cell_lock_hash, Source::Output).any(|script_hash| hash == script_hash);
-    Ok(has_output)
-}
+use types::{AccountBookCellData, AccountBookData, WithdrawalBuyer, WithdrawalBuyerUnion};
+use utils::{get_indexs, load_type_code_hash, load_withdrawal_data, Hash, SmtKey, UDTInfo};
 
 fn get_ratios(cell_data: &AccountBookCellData, level: u8) -> Result<Vec<u8>, Error> {
     // Check Spore Info
@@ -70,6 +39,12 @@ fn get_ratios(cell_data: &AccountBookCellData, level: u8) -> Result<Vec<u8>, Err
     Ok(ratios)
 }
 
+fn get_buyer(hash: Hash) -> Result<WithdrawalBuyer, Error> {
+    let indexs = get_indexs(load_type_code_hash, |h| hash == h, Source::Input);
+    let withdrawal_data = load_withdrawal_data(indexs[0], Source::Input, true)?;
+    Ok(withdrawal_data.buyer())
+}
+
 fn get_total_withdrawn(
     cell_data: &AccountBookCellData,
     witness_data: &AccountBookData,
@@ -77,60 +52,51 @@ fn get_total_withdrawn(
     let account_book_level: u8 = witness_data.level().into();
     let ratios = get_ratios(cell_data, account_book_level)?;
 
-    let (ratio, num, smt_key) = if is_platform(cell_data)? {
-        (ratios[0] as usize, 1usize, SmtKey::Platform)
-    } else if is_auther(cell_data)? {
-        (ratios[1] as usize, 1usize, SmtKey::Auther)
-    } else {
-        // Load spore level
-        let (spore_level, spore_id) = {
-            let withdrawal_code_hash: Hash = witness_data.withdrawal_intent_code_hash().into();
+    let buyer = get_buyer(witness_data.withdrawal_intent_code_hash().into())?;
 
-            let indexs = get_indexs(
-                load_type_code_hash,
-                |h| withdrawal_code_hash == h,
-                Source::Input,
-            );
-            let withdrawal_data = load_witness_args(indexs[0], Source::Input)?
-                .input_type()
-                .to_opt()
-                .ok_or_else(|| {
-                    log::error!("Load withdrawal intent witness failed, is none");
-                    Error::TxStructure
-                })?
-                .raw_data()
-                .to_vec();
-            types::WithdrawalIntentDataReader::verify(&withdrawal_data, true)?;
-            let withdrawal_data =
-                types::WithdrawalIntentData::new_unchecked(withdrawal_data.into());
+    let (ratio, num, smt_key) = match buyer.to_enum() {
+        WithdrawalBuyerUnion::WithdrawalSporeInfo(spore_info) => {
+            // Load spore level
+            let (spore_level, spore_id) = {
+                let level = spore_info.spore_level().into();
+                let id: Hash = spore_info.spore_id().into();
+                (level, id)
+            };
+            if account_book_level <= spore_level {
+                log::error!(
+                    "This Spore({}) is not eligible for profit sharing",
+                    spore_level
+                );
+                return Err(Error::Spore);
+            }
 
-            let level = withdrawal_data.spore_level().into();
-            let id: Hash = withdrawal_data.spore_id().into();
-            (level, id)
-        };
-        if account_book_level <= spore_level {
-            log::error!(
-                "This Spore({}) is not eligible for profit sharing",
-                spore_level
-            );
-            return Err(Error::Spore);
-        }
-
-        let nums = cell_data.profit_distribution_number().raw_data().to_vec();
-        if nums.len() != account_book_level as usize {
-            log::error!(
+            let nums = cell_data.profit_distribution_number().raw_data().to_vec();
+            if nums.len() != account_book_level as usize {
+                log::error!(
                 "The profit_distribution_num price in the account book is wrong, it needs: {}, actual: {}",
                 account_book_level,
                 nums.len()
             );
-            return Err(Error::AccountBook);
-        }
+                return Err(Error::AccountBook);
+            }
 
-        (
-            ratios[spore_level as usize + 2] as usize,
-            nums[spore_level as usize] as usize,
-            SmtKey::Buyer(spore_id),
-        )
+            (
+                ratios[spore_level as usize + 2] as usize,
+                nums[spore_level as usize] as usize,
+                SmtKey::Buyer(spore_id),
+            )
+        }
+        WithdrawalBuyerUnion::Byte32(script_hash) => {
+            let script_hash: Hash = script_hash.into();
+            if script_hash == cell_data.auther_id() {
+                (ratios[1] as usize, 1usize, SmtKey::Auther)
+            } else if script_hash == cell_data.platform_id() {
+                (ratios[0] as usize, 1usize, SmtKey::Platform)
+            } else {
+                log::error!("Unknow WithdrawalBuyer: {:02x?}", script_hash.as_slice());
+                return Err(Error::AccountBook);
+            }
+        }
     };
 
     let total_income: u128 = witness_data.total_income_udt().unpack();
@@ -170,40 +136,53 @@ fn get_output_udt(witness_data: &AccountBookData, udt_info: &UDTInfo) -> Result<
 pub fn withdrawal(witness_data: AccountBookData) -> Result<(), Error> {
     let (cell_data, old_smt_hash) = super::load_verified_cell_data(false)?;
 
-    let (total_withdrawn, smt_key) = get_total_withdrawn(&cell_data, &witness_data)?;
+    let (new_total_withdrawn, smt_key) = get_total_withdrawn(&cell_data, &witness_data)?;
 
     let udt_info = UDTInfo::new(witness_data.xudt_script_hash().into())?;
-    let (input_udt, output_udt) = super::check_input_type_proxy_lock(&witness_data, &udt_info)?;
-    if input_udt - total_withdrawn != output_udt {
-        return Err(Error::AccountBook);
-    }
-
-    let total_withdrawn2 = get_output_udt(&witness_data, &udt_info)?;
-    if total_withdrawn != total_withdrawn2 {
+    let (old_total_udt, new_total_udt) =
+        super::check_input_type_proxy_lock(&witness_data, &udt_info)?;
+    let withdrawal_udt = get_output_udt(&witness_data, &udt_info)?;
+    if old_total_udt != new_total_udt + withdrawal_udt {
         log::error!("The extracted udt is incorrect");
         return Err(Error::AccountBook);
     }
 
-    let old_amount: Option<u128> = witness_data.withdrawn_udt().to_opt().map(|v| v.unpack());
+    let old_total_withdrawal: Option<u128> =
+        witness_data.withdrawn_udt().to_opt().map(|v| v.unpack());
     let total_income = witness_data.total_income_udt().unpack();
-    let total_udt = udt_info.total();
+
+    if old_total_udt - new_total_udt != new_total_withdrawn - old_total_withdrawal.unwrap_or(0) {
+        log::error!(
+            "Error in calculation of withdrawal: total udt: old({}) new({}), total_withdrawn: old({:?}) new({})",
+            old_total_udt,
+            new_total_udt,
+            old_total_withdrawal,
+            new_total_withdrawn);
+        return Err(Error::AccountBook);
+    }
 
     // SMT
     let proof = utils::AccountBookProof::new(witness_data.proof().unpack());
-    proof.verify(
+    if !proof.verify(
         old_smt_hash,
         total_income,
-        total_udt,
-        (smt_key.clone(), old_amount),
-    )?;
+        old_total_udt,
+        (smt_key.clone(), old_total_withdrawal),
+    )? {
+        log::error!("Verify old SMT failed");
+        return Err(Error::AccountBook);
+    }
 
     let new_smt_hash = cell_data.smt_root_hash().into();
-    proof.verify(
+    if !proof.verify(
         new_smt_hash,
         total_income,
-        total_udt,
-        (smt_key, Some(total_withdrawn)),
-    )?;
+        new_total_udt,
+        (smt_key, Some(new_total_withdrawn)),
+    )? {
+        log::error!("Verify new SMT failed");
+        return Err(Error::AccountBook);
+    }
 
     Ok(())
 }

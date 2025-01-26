@@ -19,8 +19,8 @@ use ckb_std::{
     log,
 };
 use spore_types::spore::{SporeData, SporeDataReader};
-use types::error::SilentBerryError as Error;
-use types::WithdrawalIntentData;
+use types::{error::SilentBerryError as Error, WithdrawalBuyerUnion};
+use types::{WithdrawalIntentData, WithdrawalSporeInfo};
 use utils::{is_not_out_of_bound, Hash, UDTInfo, HASH_SIZE};
 
 fn is_input() -> Result<bool, Error> {
@@ -66,14 +66,13 @@ fn load_verified_data(is_input: bool) -> Result<(WithdrawalIntentData, Hash), Er
     Ok((witness_data, args[0].clone()))
 }
 
-fn check_spore(witness_data: &WithdrawalIntentData) -> Result<(), Error> {
-    let spore_code_hash: Hash = witness_data.spore_code_hash().into();
-
+fn check_spore(spore_info: WithdrawalSporeInfo) -> Result<(), Error> {
+    let spore_code_hash: Hash = spore_info.spore_code_hash().into();
     let spore_data = {
         let spore_input_index = {
             let indexs = utils::get_indexs(
                 utils::load_type_code_hash,
-                |hahs| spore_code_hash == hahs,
+                |hash| spore_code_hash == hash,
                 Source::Input,
             );
             if indexs.len() != 1 {
@@ -108,7 +107,7 @@ fn check_spore(witness_data: &WithdrawalIntentData) -> Result<(), Error> {
 
     // Check cluster ID
     let cluster_id: Hash = spore_data.cluster_id().try_into()?;
-    if cluster_id != witness_data.cluster_id() {
+    if cluster_id != spore_info.cluster_id() {
         log::error!("The cluster id in Spore is different from the one passed in");
         return Err(Error::Spore);
     }
@@ -121,13 +120,13 @@ fn check_spore(witness_data: &WithdrawalIntentData) -> Result<(), Error> {
         })?
         .args()
         .try_into()?;
-    if spore_id != witness_data.spore_id() {
+    if spore_id != spore_info.spore_id() {
         log::error!("The spore id in Spore is different from the one passed in");
         return Err(Error::Spore);
     }
 
     // Check Spore Level
-    let data_level: u8 = witness_data.spore_level().into();
+    let data_level: u8 = spore_info.spore_level().into();
     if data_level != utils::get_spore_level(&spore_data)? {
         log::error!(
             "The Spore level being sold is incorrect: {}, {}",
@@ -140,16 +139,76 @@ fn check_spore(witness_data: &WithdrawalIntentData) -> Result<(), Error> {
     Ok(())
 }
 
-fn check_account_book(hash: Hash) -> Result<(), Error> {
-    if !QueryIter::new(load_cell_type_hash, Source::Input).any(|script_hash| hash == script_hash) {
-        // log::error!("Account Book not found in Input");
-        return Err(Error::TxStructure);
+fn has_account_book(hash: Hash) -> Result<bool, Error> {
+    let input_has =
+        QueryIter::new(load_cell_type_hash, Source::Input).any(|script_hash| hash == script_hash);
+
+    let output_has =
+        QueryIter::new(load_cell_type_hash, Source::Output).any(|script_hash| hash == script_hash);
+
+    if input_has != output_has {
+        log::error!("Account book must be in both Input and Output");
+        Err(Error::TxStructure)
+    } else {
+        Ok(input_has)
     }
-    if !QueryIter::new(load_cell_type_hash, Source::Output).any(|script_hash| hash == script_hash) {
-        log::error!("Account Book not found in Output");
+}
+
+fn create_intent(witness_data: WithdrawalIntentData) -> Result<(), Error> {
+    let buyer = witness_data.buyer();
+
+    match buyer.to_enum() {
+        WithdrawalBuyerUnion::WithdrawalSporeInfo(spore_info) => check_spore(spore_info),
+        WithdrawalBuyerUnion::Byte32(script_hash) => {
+            let script_hash: Hash = script_hash.into();
+            if !QueryIter::new(load_cell_lock_hash, Source::Input).any(|hash| script_hash == hash) {
+                log::error!("WithdrawalBuyerUnion::Byte32 must be present in Input");
+                return Err(Error::CheckScript);
+            }
+            if !QueryIter::new(load_cell_lock_hash, Source::Output).any(|hash| script_hash == hash)
+            {
+                log::error!("WithdrawalBuyerUnion::Byte32 must be present in Output");
+                return Err(Error::CheckScript);
+            }
+            Ok(())
+        }
+    }
+}
+
+fn withdrawal(witness_data: WithdrawalIntentData) -> Result<(), Error> {
+    let xudt_script_hash: Hash = witness_data.xudt_script_hash().into();
+    let udt_info = UDTInfo::new(xudt_script_hash)?;
+
+    let xudt_lock_script_hash: Hash = witness_data.xudt_lock_script_hash().into();
+    if !udt_info.outputs.iter().any(|(_udt, index)| {
+        if let Ok(hash) = load_cell_lock_hash(*index, Source::Output) {
+            xudt_lock_script_hash == hash
+        } else {
+            false
+        }
+    }) {
+        log::error!("Output of xudt_lock_script is wrong");
         return Err(Error::TxStructure);
     }
 
+    Ok(())
+}
+
+fn revocation(witness_data: WithdrawalIntentData) -> Result<(), Error> {
+    let since = load_input_since(0, Source::GroupInput)?;
+    if since < witness_data.expire_since().unpack() {
+        return Err(Error::CheckScript);
+    }
+
+    let owner_script_hash: Hash = witness_data.owner_script_hash().into();
+    if owner_script_hash != load_cell_lock_hash(0, Source::Output)? {
+        log::error!("Revocation failed, not found owner in Output 0");
+        return Err(Error::CheckScript);
+    }
+    if load_cell_type_hash(0, Source::Output)?.is_some() {
+        log::error!("Revocation failed, Type script is not NONE");
+        return Err(Error::CheckScript);
+    }
     Ok(())
 }
 
@@ -158,43 +217,13 @@ fn program_entry2() -> Result<(), Error> {
     let (witness_data, accountbook_hash) = load_verified_data(is_input)?;
 
     if is_input {
-        let ret = check_account_book(accountbook_hash);
-        if ret.is_ok() {
-            let xudt_script_hash: Hash = witness_data.xudt_script_hash().into();
-            let udt_info = UDTInfo::new(xudt_script_hash)?;
-
-            let xudt_lock_script_hash: Hash = witness_data.xudt_lock_script_hash().into();
-            if !udt_info.outputs.iter().any(|(_udt, index)| {
-                if let Ok(hash) = load_cell_lock_hash(*index, Source::Output) {
-                    xudt_lock_script_hash == hash
-                } else {
-                    false
-                }
-            }) {
-                log::error!("Output of xudt_lock_script is wrong");
-                return Err(Error::TxStructure);
-            }
-
-            Ok(())
-        } else if ret == Err(Error::TxStructure) {
-            let since = load_input_since(0, Source::GroupInput)?;
-            if since < witness_data.expire_since().unpack() {
-                return ret;
-            }
-
-            let owner_script_hash: Hash = witness_data.owner_script_hash().into();
-            if owner_script_hash != load_cell_lock_hash(0, Source::Output)? {
-                log::error!("Revocation failed, not found owner in Output 0");
-                return Err(Error::CheckScript);
-            }
-            Ok(())
+        if has_account_book(accountbook_hash)? {
+            withdrawal(witness_data)
         } else {
-            ret
+            revocation(witness_data)
         }
     } else {
-        // check spore
-        check_spore(&witness_data)?;
-        Ok(())
+        create_intent(witness_data)
     }
 }
 

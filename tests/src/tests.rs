@@ -8,7 +8,7 @@ use ckb_testtool::ckb_types::{
 use spore_types::spore::SporeData;
 use types::{
     AccountBookCellData, AccountBookData, BuyIntentData, DobSellingData, Uint128Opt,
-    WithdrawalIntentData,
+    WithdrawalBuyer, WithdrawalIntentData, WithdrawalSporeInfo,
 };
 use utils::{Hash, SmtKey};
 
@@ -17,6 +17,7 @@ const DATA_MIN_CAPACITY: u64 = 1000;
 
 fn def_dob_selling_data(_context: &mut Context, spore_data: &SporeData) -> DobSellingData {
     DobSellingData::new_builder()
+        .spore_code_hash((*SporeCodeHash).pack())
         .spore_data_hash(ckb_hash(spore_data.as_slice()).pack())
         .buy_intent_code_hash((*BuyIntentCodeHash).pack())
         .build()
@@ -36,9 +37,6 @@ fn def_buy_intent_data(context: &mut Context, dob_data: &DobSellingData) -> BuyI
 fn def_withdrawal_intent_data(context: &mut Context) -> WithdrawalIntentData {
     WithdrawalIntentData::new_builder()
         .xudt_script_hash(get_opt_script_hash(&build_xudt_script(context)).pack())
-        .spore_code_hash((*SporeCodeHash).pack())
-        .spore_id([0u8; 32].pack())
-        .cluster_id([0u8; 32].pack())
         .expire_since(1000u64.pack())
         .owner_script_hash([0u8; 32].pack())
         .build()
@@ -139,7 +137,7 @@ fn test_simple_buy_intent() {
             .witnesses(witnesses)
             .build(),
     );
-    // print_tx_info(&context, &tx);
+    print_tx_info(&context, &tx);
     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 }
 
@@ -349,11 +347,20 @@ fn test_simple_withdrawal_intent() {
     let tx = build_transfer_spore(&mut context, tx, &spore_data);
     let tx = context.complete_tx(tx);
 
+    let withdrawal_spore_info = WithdrawalSporeInfo::new_builder()
+        .spore_code_hash((*SporeCodeHash).pack())
+        .spore_level(2.into())
+        .spore_id(get_spore_id(&tx).pack())
+        .cluster_id(get_cluster_id(&spore_data).pack())
+        .build();
+
     let withdrawal_intent_data = def_withdrawal_intent_data(&mut context)
         .as_builder()
-        .spore_id(get_spore_id(&tx).pack())
-        .spore_level(2.into())
-        .cluster_id(get_cluster_id(&spore_data).pack())
+        .buyer(
+            WithdrawalBuyer::new_builder()
+                .set(withdrawal_spore_info)
+                .build(),
+        )
         .build();
     let withdrawal_intent_script =
         build_withdrawal_intent_script(&mut context, &withdrawal_intent_data, [0u8; 32].into());
@@ -398,27 +405,33 @@ fn test_simple_withdrawal_suc() {
     // let spore_level: u8 = 1;
     let cluster_id: Hash = [0x1A; 32].into();
 
-    // 计算分账
+    // Cal Withdrawal
     let ratios = [20, 30, 30, 20];
     let buyers = [7, 15];
     let spore_level = 1;
     let total_income = 300000u128;
-    let old_amount = Some(10u128);
+    let old_total_udt = 10000u128;
+    let old_total_withdrawal = Some(10u128);
 
-    let new_amount: u128 = old_amount.unwrap_or(0)
-        + total_income * ratios[spore_level + 2] as u128 / 100 / buyers[spore_level] as u128;
+    let new_total_withdrawal: u128 =
+        total_income * ratios[spore_level + 2] as u128 / 100 / buyers[spore_level] as u128;
+    let withdrawal_udt = new_total_withdrawal - old_total_withdrawal.unwrap_or(0);
+    let new_total_udt = old_total_udt - withdrawal_udt;
 
     let mut smt = AccountBook::new_test();
-    if old_amount.is_some() {
+    if old_total_withdrawal.is_some() {
         smt.update(
             SmtKey::Buyer(spore_id.clone()),
-            *(old_amount.as_ref().unwrap()),
+            *(old_total_withdrawal.as_ref().unwrap()),
         );
     }
+    smt.update(SmtKey::TotalIncome, total_income);
+    smt.update(SmtKey::AccountBalance, old_total_udt);
     let old_hash = smt.root_hash();
     let proof = smt.proof(SmtKey::Buyer(spore_id.clone()));
 
-    smt.update(SmtKey::Buyer(spore_id.clone()), new_amount);
+    smt.update(SmtKey::AccountBalance, new_total_udt);
+    smt.update(SmtKey::Buyer(spore_id.clone()), new_total_withdrawal);
     let new_hash = smt.root_hash();
 
     // Account Book
@@ -436,7 +449,7 @@ fn test_simple_withdrawal_suc() {
         .proof(proof.pack())
         .withdrawn_udt({
             Uint128Opt::new_builder()
-                .set(old_amount.map(|v| v.pack()))
+                .set(old_total_withdrawal.map(|v| v.pack()))
                 .build()
         })
         .build();
@@ -459,7 +472,7 @@ fn test_simple_withdrawal_suc() {
                     .lock(input_proxy_script.clone())
                     .type_(xudt_script.clone().pack())
                     .build(),
-                10000u128.to_le_bytes().to_vec().into(),
+                old_total_udt.to_le_bytes().to_vec().into(),
             )
         };
         let output_cell = {
@@ -472,7 +485,7 @@ fn test_simple_withdrawal_suc() {
         tx.as_advanced_builder()
             .input(build_input(input_cell))
             .output(output_cell)
-            .output_data((10000u128 - 4000).to_le_bytes().pack())
+            .output_data(new_total_udt.to_le_bytes().pack())
             .witness(Default::default())
             .build()
     };
@@ -517,14 +530,24 @@ fn test_simple_withdrawal_suc() {
 
     // Withdrawal Intent
     let tx = {
-        let withdrawal_intent_data = def_withdrawal_intent_data(&mut context)
-            .as_builder()
+        let withdrawal_spore_info = WithdrawalSporeInfo::new_builder()
+            .spore_code_hash((*SporeCodeHash).pack())
             .spore_id(spore_id.into())
             .spore_level((spore_level as u8).into())
             .cluster_id(cluster_id.into())
+            .build();
+
+        let withdrawal_intent_data = def_withdrawal_intent_data(&mut context)
+            .as_builder()
             .owner_script_hash(out_xudt_lock_script.calc_script_hash())
             .xudt_lock_script_hash(out_xudt_lock_script.calc_script_hash())
+            .buyer(
+                WithdrawalBuyer::new_builder()
+                    .set(withdrawal_spore_info)
+                    .build(),
+            )
             .build();
+
         let withdrawal_intent_script = build_withdrawal_intent_script(
             &mut context,
             &withdrawal_intent_data,
@@ -556,7 +579,7 @@ fn test_simple_withdrawal_suc() {
         tx.as_advanced_builder()
             .input(build_input(input_cell))
             .output(output_cell)
-            .output_data(4000u128.to_le_bytes().pack())
+            .output_data(withdrawal_udt.to_le_bytes().pack())
             .witness(
                 WitnessArgs::new_builder()
                     .input_type(Some(withdrawal_intent_data.as_bytes()).pack())

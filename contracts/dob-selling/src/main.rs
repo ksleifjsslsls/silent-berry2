@@ -9,6 +9,7 @@ ckb_std::entry!(program_entry);
 #[cfg(not(any(feature = "native-simulator", test)))]
 ckb_std::default_alloc!();
 
+use alloc::vec::Vec;
 use ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::{Entity, Reader},
@@ -51,12 +52,30 @@ fn load_verified_data() -> Result<DobSellingData, Error> {
     Ok(witness_data)
 }
 
-fn check_spore_data(hash: Hash) -> Result<(), Error> {
-    if QueryIter::new(load_cell_data_hash, Source::Output).all(|f| hash != f) {
-        // log::error!("Spore Error, SporeData does not match Hash");
-        Err(Error::CheckScript)
+fn get_spore_cell_index(code_hash: Hash) -> Result<Option<usize>, Error> {
+    let indexs: Vec<usize> = utils::get_indexs(
+        utils::load_type_code_hash,
+        |h| code_hash == h,
+        Source::Output,
+    );
+    if indexs.len() > 1 {
+        log::error!("Only one spore is allowed");
+        return Err(Error::CheckScript);
+    }
+    if indexs.is_empty() {
+        Ok(None)
     } else {
+        Ok(Some(indexs[0]))
+    }
+}
+
+fn check_spore_data(spore_index: usize, data_hash: Hash) -> Result<(), Error> {
+    let hash = load_cell_data_hash(spore_index, Source::Output)?;
+    if data_hash == hash {
         Ok(())
+    } else {
+        log::error!("Spore Error, SporeData does not match Hash");
+        Err(Error::CheckScript)
     }
 }
 
@@ -103,13 +122,10 @@ fn revocation(witness_data: DobSellingData) -> Result<(), Error> {
     }
 
     let owner_script_hash: Hash = witness_data.owner_script_hash().into();
-    if owner_script_hash != load_cell_lock_hash(1, Source::Output)? {
+    if owner_script_hash != load_cell_lock_hash(0, Source::Output)? {
         log::error!("Revocation failed, owner hash");
         return Err(Error::CheckScript);
     }
-
-    let buy_intent_data = utils::load_buy_intent_data(1, Source::Input)?;
-    let _udt_info = utils::UDTInfo::new(buy_intent_data.xudt_script_hash().into());
 
     if load_cell_lock_hash(2, Source::Input) != Err(SysError::IndexOutOfBound) {
         log::error!("As a revocation , no other contracts can exist for Input");
@@ -121,12 +137,14 @@ fn revocation(witness_data: DobSellingData) -> Result<(), Error> {
 
 fn program_entry2() -> Result<(), Error> {
     let witness_data = load_verified_data()?;
-    let ret = check_spore_data(witness_data.spore_data_hash().into());
-    if ret.is_err() && ret.unwrap_err() == Error::CheckScript {
-        revocation(witness_data)?;
-    } else {
+    let spore_index = get_spore_cell_index(witness_data.spore_code_hash().into())?;
+
+    if let Some(spore_index) = spore_index {
+        check_spore_data(spore_index, witness_data.spore_data_hash().into())?;
         check_account_book(witness_data.account_book_script_hash().into())?;
         check_buy_intent_code_hash(witness_data.buy_intent_code_hash().into())?;
+    } else {
+        revocation(witness_data)?;
     }
     Ok(())
 }

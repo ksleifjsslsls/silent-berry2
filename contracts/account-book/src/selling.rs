@@ -88,7 +88,7 @@ pub fn selling(witness_data: AccountBookData) -> Result<(), Error> {
 
     let (old_total_income, new_total_income): (u128, u128) = {
         let total: u128 = witness_data.total_income_udt().unpack();
-        (total - price, total)
+        (total, total + price)
     };
 
     use utils::{AccountBookProof, SmtKey};

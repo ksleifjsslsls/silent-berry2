@@ -68,11 +68,23 @@ fn check_cell_data(witness_data: &AccountBookData) -> Result<(), Error> {
     let cell_data = utils::load_account_bool_cell_data(0, Source::GroupOutput)?;
 
     let level: u8 = witness_data.level().into();
-    if cell_data.profit_distribution_ratio().raw_data().len() != level as usize + 2 {
+    let ratios = cell_data.profit_distribution_ratio().raw_data().to_vec();
+    if ratios.len() != level as usize + 2 {
         log::error!(
             "The profit_distribution_ratio price in the account book is wrong, it needs: {}, actual: {}",
             level + 2,
             cell_data.profit_distribution_ratio().raw_data().len()
+        );
+        return Err(Error::AccountBook);
+    }
+    let mut total_ratios = 0usize;
+    for r in ratios {
+        total_ratios += r as usize;
+    }
+    if total_ratios != 100 {
+        log::error!(
+            "The profit_distribution_ratios sum is not 100 ({})",
+            total_ratios
         );
         return Err(Error::AccountBook);
     }
@@ -95,6 +107,10 @@ fn check_cell_data(witness_data: &AccountBookData) -> Result<(), Error> {
     // Check SMT
     let smt_root_hash: Hash = cell_data.smt_root_hash().into();
     let proof = AccountBookProof::new(witness_data.proof().raw_data().to_vec());
+    if smt_root_hash != utils::SMT_ROOT_HASH_INITIAL {
+        log::error!("smt_root_hash is not default value");
+        return Err(Error::AccountBook);
+    }
     let ret = proof.verify(smt_root_hash, 0, 0, (SmtKey::Auther, None))?;
     if !ret {
         log::error!("Verify smt failed");

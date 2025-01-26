@@ -63,19 +63,17 @@ fn is_creation() -> Result<bool, Error> {
     }
     ret?;
 
-    // There is only one Input and Output
-    let ret = load_cell_type_hash(1, Source::GroupInput);
-    if ret.is_ok() || ret.unwrap_err() != SysError::IndexOutOfBound {
-        log::error!("Multiple AccountBook found in Input");
-        return Err(Error::TxStructure);
-    }
-    let ret = load_cell_type_hash(1, Source::GroupOutput);
-    if ret.is_ok() || ret.unwrap_err() != SysError::IndexOutOfBound {
-        log::error!("Multiple AccountBook found in Output");
-        return Err(Error::TxStructure);
-    }
-
     Ok(false)
+}
+
+fn the_only(source: Source) -> Result<(), Error> {
+    let ret = load_cell_type_hash(1, source);
+    if ret == Err(SysError::IndexOutOfBound) {
+        Ok(())
+    } else {
+        log::error!("Multiple AccountBook found in {:?}", source);
+        Err(Error::TxStructure)
+    }
 }
 
 fn verify_cell_data(old: &AccountBookCellData, new: &AccountBookCellData) -> Result<(), Error> {
@@ -221,10 +219,15 @@ fn program_entry2() -> Result<(), Error> {
 
     if is_creation()? {
         creation::creation(witness_data)
-    } else if is_selling(&witness_data)? {
-        selling::selling(witness_data)
     } else {
-        withdrawal::withdrawal(witness_data)
+        the_only(Source::GroupInput)?;
+        the_only(Source::GroupOutput)?;
+
+        if is_selling(&witness_data)? {
+            selling::selling(witness_data)
+        } else {
+            withdrawal::withdrawal(witness_data)
+        }
     }
 }
 

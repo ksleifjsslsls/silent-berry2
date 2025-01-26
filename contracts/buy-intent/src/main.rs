@@ -11,6 +11,7 @@ ckb_std::default_alloc!();
 
 // Args: AccountBookScriptHash | Intent Data Hash
 
+use alloc::vec::Vec;
 use ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::{Entity, Unpack},
@@ -67,31 +68,46 @@ fn load_verified_data(is_input: bool) -> Result<(BuyIntentData, Hash), Error> {
     Ok((witness_data, args[0].clone()))
 }
 
-fn check_input_dob_selling(dob_selling_hash: Hash) -> Result<(), Error> {
-    if QueryIter::new(load_cell_lock_hash, Source::Input).any(|f| dob_selling_hash == f) {
-        Ok(())
-    } else {
-        log::error!("DobSelling not found");
+fn check_input_dob_selling(dob_selling_hash: Hash) -> Result<usize, Error> {
+    let indexs: Vec<usize> = QueryIter::new(load_cell_lock_hash, Source::Input)
+        .enumerate()
+        .filter_map(|(index, hash)| {
+            if dob_selling_hash == hash {
+                Some(index)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    if indexs.len() != 1 {
+        log::error!(
+            "The DobSelling quantity in input is incorrect, {:?}",
+            indexs
+        );
         Err(Error::CheckScript)
+    } else {
+        Ok(indexs[0])
     }
 }
 
-fn check_account_book(account_book_hash: Hash, price: u128) -> Result<(), Error> {
+fn has_account_book(account_book_hash: &Hash) -> Result<bool, Error> {
     let mut count = 0;
     QueryIter::new(load_cell_type_hash, Source::Input).all(|f| {
-        if account_book_hash == f.unwrap() {
+        if *account_book_hash == f.unwrap() {
             count += 1;
         }
         true
     });
-    if count != 1 {
-        log::error!(
-            "AccountBook quantity error in Input, Need 1, Found {}",
-            count
-        );
+    if count > 1 {
+        log::error!("Multiple account book detected in Inputs: {}", count);
         return Err(Error::CheckScript);
     }
 
+    Ok(count == 1)
+}
+
+fn check_account_book(account_book_hash: Hash, price: u128) -> Result<(), Error> {
     let mut query_iter = QueryIter::new(load_cell_type_hash, Source::Output);
     let pos = query_iter.position(|f| account_book_hash == f);
     if pos.is_none() {
@@ -180,15 +196,22 @@ fn create_intent(witness_data: BuyIntentData, udt_info: UDTInfo) -> Result<(), E
     Ok(())
 }
 
-fn selling(witness_data: BuyIntentData) -> Result<(), Error> {
+fn selling(witness_data: BuyIntentData, accountbook_hash: Hash) -> Result<(), Error> {
+    check_account_book(accountbook_hash, witness_data.price().unpack())?;
     check_input_dob_selling(witness_data.dob_selling_script_hash().into())?;
     Ok(())
 }
 
-fn revocation(witness_data: BuyIntentData) -> Result<(), Error> {
+fn revocation(witness_data: BuyIntentData, _udt_info: UDTInfo) -> Result<(), Error> {
     let since = load_input_since(0, Source::GroupInput)?;
     let expire_since: u64 = witness_data.expire_since().unpack();
     if since < expire_since {
+        return Err(Error::CheckScript);
+    }
+
+    let dob_selling_index = check_input_dob_selling(witness_data.dob_selling_script_hash().into())?;
+    if dob_selling_index != 0 {
+        log::error!("DobSelling is not in Input[0]");
         return Err(Error::CheckScript);
     }
 
@@ -196,6 +219,10 @@ fn revocation(witness_data: BuyIntentData) -> Result<(), Error> {
     let lock_script_hash = load_cell_lock_hash(1, Source::Output)?;
     if owner_script_hash != lock_script_hash {
         log::error!("Revocation failed, not found owner in Output 1");
+        return Err(Error::CheckScript);
+    }
+    if load_cell_type_hash(1, Source::Output)?.is_some() {
+        log::error!("Output 1 Type Script is not None");
         return Err(Error::CheckScript);
     }
 
@@ -208,11 +235,10 @@ fn program_entry2() -> Result<(), Error> {
     let udt_info = utils::UDTInfo::new(witness_data.xudt_script_hash().into())?;
 
     if is_input {
-        let ret = check_account_book(accountbook_hash, witness_data.price().unpack());
-        if ret.is_ok() {
-            selling(witness_data)
+        if has_account_book(&accountbook_hash)? {
+            selling(witness_data, accountbook_hash)
         } else {
-            revocation(witness_data)
+            revocation(witness_data, udt_info)
         }
     } else {
         create_intent(witness_data, udt_info)

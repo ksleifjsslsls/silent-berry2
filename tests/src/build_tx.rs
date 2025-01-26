@@ -387,7 +387,7 @@ pub fn update_accountbook(
     let abd = AccountBookData::new_unchecked(witness.output_type().to_opt().unwrap().unpack())
         .as_builder()
         .proof(smt_proof.pack())
-        .total_income_udt((total_income + price).pack())
+        .total_income_udt(total_income.pack())
         .build();
     let witness = witness
         .as_builder()
