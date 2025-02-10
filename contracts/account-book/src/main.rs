@@ -1,9 +1,13 @@
 #![cfg_attr(not(any(feature = "native-simulator", test)), no_std)]
 #![cfg_attr(not(test), no_main)]
 
+#[cfg(not(any(feature = "native-simulator", test)))]
 ckb_std::entry!(program_entry);
 #[cfg(not(any(feature = "native-simulator", test)))]
 ckb_std::default_alloc!();
+
+#[cfg(any(feature = "native-simulator", test))]
+extern crate alloc;
 
 use alloc::vec::Vec;
 use ckb_std::{
