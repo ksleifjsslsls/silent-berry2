@@ -22,7 +22,7 @@ struct DobSellingData {
 ```
 
 ## Unlock Process
-1. Load `DobSellingData` from the witness and verify the `Witness Data Hash`.
+1. Load `DobSellingData` from the witness (GroupInput) and verify the `Witness Data Hash`.
 2. Use `DobSellingData.spore_code_hash` to locate the index of the Spore in the outputs. If not found, execute the `Revocation` process.
 
 ### Selling Spore

@@ -43,10 +43,9 @@ struct BuyIntentData {
 
 The unlock process is divided into three scenarios:
 ### In Output (Create Intent)
-1. Retrieve and validate the DOB Selling script from Output[1] using BuyIntentData.`dob_selling_script_hash`.
-2. Ensure the total UDT amounts in inputs and outputs remain equal, based on `BuyIntentData.xudt_script_hash`.
-3. Verify that the price stored in Output[1] matches `BuyIntentData.price`.
-4. Ensure the CKB stored in Output[2] meets or exceeds `BuyIntentData.min_capacity`, as it is used for spore minting.
+1. Retrieve and validate the DOB Selling script from Output[1] using `BuyIntentData.dob_selling_script_hash`.
+2. Verify that the price stored in Output[1] matches `BuyIntentData.price`.
+3. Ensure the CKB stored in Output[2] meets or exceeds `BuyIntentData.min_capacity`, as it is used for spore minting.
 
 ### In Input (DOB Selling)
 1. Use the Account Book Script Hash to locate the Account Book in the inputs. If it does not exist, proceed to Revocation.
