@@ -136,14 +136,37 @@ fn check_account_book(account_book_hash: Hash, price: u128) -> Result<(), Error>
 }
 
 fn create_intent(witness_data: BuyIntentData, udt_info: UDTInfo) -> Result<(), Error> {
-    let dob_selling = ckb_std::high_level::load_cell_lock_hash(1, Source::Output)?;
+    let dob_selling_index = {
+        let dob_selling_script_hash: Hash = witness_data.dob_selling_script_hash().into();
+        let indexs: Vec<usize> = utils::get_indexs(
+            load_cell_lock_hash,
+            |hash| dob_selling_script_hash == hash,
+            Source::Output,
+        );
+        if indexs.len() != 1 {
+            log::error!("Dob Selling Script Hash failed, get {}", indexs.len());
+            return Err(Error::CheckScript);
+        }
+        indexs[0]
+    };
 
-    if dob_selling != witness_data.dob_selling_script_hash().as_slice() {
-        log::error!("Dob Selling Script Hash failed");
-        return Err(Error::CheckScript);
-    }
     let price: u128 = witness_data.price().unpack();
-    if udt_info.outputs[1].0 != price {
+    let dob_selling_price = udt_info
+        .outputs
+        .iter()
+        .find_map(|(udt, index)| {
+            if index == &dob_selling_index {
+                Some(udt)
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| {
+            log::error!("Dob Selling type lock isnot xUDT");
+            Error::CheckScript
+        })?;
+
+    if *dob_selling_price != price {
         log::error!(
             "Incorrect xUDT payment: Need: {}, Actually: {}",
             price,
@@ -152,8 +175,7 @@ fn create_intent(witness_data: BuyIntentData, udt_info: UDTInfo) -> Result<(), E
         return Err(Error::CheckXUDT);
     }
 
-    let capacity = load_cell_capacity(2, Source::Output)?;
-
+    let capacity = load_cell_capacity(0, Source::GroupOutput)?;
     let buy_intent_capacity = u64::from_le_bytes(
         witness_data
             .min_capacity()
