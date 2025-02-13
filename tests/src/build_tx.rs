@@ -8,9 +8,7 @@ use ckb_testtool::{
     context::Context,
 };
 use spore_types::spore::SporeData;
-use types::{
-    AccountBookCellData, AccountBookData, DobSellingData, Uint128Opt, WithdrawalIntentData,
-};
+use types::{AccountBookCellData, AccountBookData, DobSellingData, WithdrawalIntentData};
 use utils::Hash;
 
 use crate::*;
@@ -155,14 +153,7 @@ pub fn build_account_book_script(
     context: &mut Context,
     data: types::AccountBookData,
 ) -> Option<Script> {
-    let args = ckb_hash(
-        data.as_builder()
-            .proof(Default::default())
-            .total_income_udt(0.pack())
-            .withdrawn_udt(Uint128Opt::new_builder().set(None).build())
-            .build()
-            .as_slice(),
-    );
+    let args = ckb_hash(data.info().as_slice());
     let out_point = context.deploy_cell_by_name(ACCOUNT_BOOK_NAME);
     Some(
         context

@@ -7,8 +7,8 @@ use ckb_testtool::ckb_types::{
 };
 use spore_types::spore::SporeData;
 use types::{
-    AccountBookCellData, AccountBookData, BuyIntentData, DobSellingData, Uint128Opt,
-    WithdrawalBuyer, WithdrawalIntentData, WithdrawalSporeInfo,
+    AccountBookCellData, AccountBookData, AccountBookInfo, BuyIntentData, DobSellingData,
+    Uint128Opt, WithdrawalBuyer, WithdrawalIntentData, WithdrawalSporeInfo,
 };
 use utils::{Hash, SmtKey};
 
@@ -42,14 +42,15 @@ fn def_withdrawal_intent_data(context: &mut Context) -> WithdrawalIntentData {
         .build()
 }
 fn def_account_book_data(context: &mut Context) -> AccountBookData {
-    AccountBookData::new_builder()
+    let info = AccountBookInfo::new_builder()
         .dob_selling_code_hash((*DOBSellingCodeHash).pack())
         .buy_intent_code_hash((*BuyIntentCodeHash).pack())
         .withdrawal_intent_code_hash((*WithdrawalIntentCodeHash).pack())
         .xudt_script_hash(get_opt_script_hash(&build_xudt_script(context)).pack())
         .input_type_proxy_lock_code_hash((*InputTypeProxyLockCodeHash).pack())
         .cluster_id([3u8; 32].pack())
-        .build()
+        .build();
+    AccountBookData::new_builder().info(info).build()
 }
 fn def_account_book_cell_data(_context: &mut Context) -> AccountBookCellData {
     AccountBookCellData::new_builder()
@@ -234,10 +235,16 @@ fn test_simple_selling() {
 
     // Account Book
     let account_book_data = def_account_book_data(&mut context);
+    let account_book_info = account_book_data.info();
     let account_book_data = account_book_data
         .as_builder()
-        .level(2.into())
-        .cluster_id(get_cluster_id(&spore_data).pack())
+        .info(
+            account_book_info
+                .as_builder()
+                .level(2.into())
+                .cluster_id(get_cluster_id(&spore_data).pack())
+                .build(),
+        )
         // .proof(smt_proof.pack())
         .build();
     let ab_cell_data = def_account_book_cell_data(&mut context)
@@ -442,10 +449,17 @@ fn test_simple_withdrawal_suc() {
         .profit_distribution_number(buyers.pack())
         .smt_root_hash(old_hash.into())
         .build();
-    let account_book_data = def_account_book_data(&mut context)
+    let account_book_data = def_account_book_data(&mut context);
+    let account_book_info = account_book_data.info();
+    let account_book_data = account_book_data
         .as_builder()
-        .level(2.into())
-        .cluster_id(cluster_id.clone().into())
+        .info(
+            account_book_info
+                .as_builder()
+                .level(2.into())
+                .cluster_id(cluster_id.clone().into())
+                .build(),
+        )
         .total_income_udt(total_income.pack())
         .proof(proof.pack())
         .withdrawn_udt({
@@ -655,9 +669,11 @@ fn create_account_book() {
 
     let smt = AccountBook::new_empty();
 
-    let account_book_data = def_account_book_data(&mut context)
+    let account_book_data = def_account_book_data(&mut context);
+    let account_book_info = account_book_data.info();
+    let account_book_data = account_book_data
         .as_builder()
-        .level(5u8.into())
+        .info(account_book_info.as_builder().level(5u8.into()).build())
         .proof(smt.proof(SmtKey::Auther).pack())
         .build();
     let account_book_cell_data = def_account_book_cell_data(&mut context)

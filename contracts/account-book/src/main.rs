@@ -18,7 +18,7 @@ use ckb_std::{
     log,
 };
 pub use types::error::SilentBerryError as Error;
-use types::{AccountBookCellData, AccountBookData, Uint128Opt};
+use types::{AccountBookCellData, AccountBookData};
 use utils::{get_indexs, load_lock_code_hash, load_type_code_hash, Hash, UDTInfo};
 
 mod creation;
@@ -34,17 +34,9 @@ fn load_verified_data() -> Result<AccountBookData, Error> {
     let witness_data_hash = args[0].clone();
 
     let witness_data = utils::load_account_book_data(0, Source::GroupOutput)?;
+    let info = witness_data.info();
 
-    let witness_hash = {
-        let data2 = witness_data
-            .clone()
-            .as_builder()
-            .proof(Default::default())
-            .total_income_udt(0.pack())
-            .withdrawn_udt(Uint128Opt::new_builder().set(None).build())
-            .build();
-        Hash::ckb_hash(data2.as_slice())
-    };
+    let witness_hash = { Hash::ckb_hash(info.as_slice()) };
 
     if witness_hash != witness_data_hash {
         log::error!("Witness data Hash != Args");
@@ -125,7 +117,9 @@ fn load_verified_cell_data(is_selling: bool) -> Result<(AccountBookCellData, Has
 }
 
 fn is_selling(witness_data: &AccountBookData) -> Result<bool, Error> {
-    let dob_selling_code_hash: Hash = witness_data.dob_selling_code_hash().into();
+    let info = witness_data.info();
+
+    let dob_selling_code_hash: Hash = info.dob_selling_code_hash().into();
     if !get_indexs(
         load_lock_code_hash,
         |h| dob_selling_code_hash == h,
@@ -135,7 +129,7 @@ fn is_selling(witness_data: &AccountBookData) -> Result<bool, Error> {
     {
         Ok(true)
     } else {
-        let withdrawal_code_hash: Hash = witness_data.withdrawal_intent_code_hash().into();
+        let withdrawal_code_hash: Hash = info.withdrawal_intent_code_hash().into();
         if !get_indexs(
             load_type_code_hash,
             |h| withdrawal_code_hash == h,
@@ -162,7 +156,7 @@ fn check_input_type_proxy_lock(
         })?
         .into();
 
-    let proxy_lock_code_hash: Hash = witness_data.input_type_proxy_lock_code_hash().into();
+    let proxy_lock_code_hash: Hash = witness_data.info().input_type_proxy_lock_code_hash().into();
     let indexs = get_indexs(
         load_lock_code_hash,
         |h| proxy_lock_code_hash == h,

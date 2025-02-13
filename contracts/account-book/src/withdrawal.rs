@@ -15,10 +15,11 @@ fn get_total_withdrawn(
     cell_data: &AccountBookCellData,
     witness_data: &AccountBookData,
 ) -> Result<(u128, SmtKey), Error> {
-    let account_book_level: u8 = witness_data.level().into();
+    let info = witness_data.info();
+    let account_book_level: u8 = info.level().into();
     let ratios = crate::get_ratios(cell_data, account_book_level)?;
 
-    let buyer = get_buyer(witness_data.withdrawal_intent_code_hash().into())?;
+    let buyer = get_buyer(info.withdrawal_intent_code_hash().into())?;
 
     let (ratio, num, smt_key) = match buyer.to_enum() {
         WithdrawalBuyerUnion::WithdrawalSporeInfo(spore_info) => {
@@ -70,7 +71,8 @@ fn get_total_withdrawn(
 }
 
 fn get_output_udt(witness_data: &AccountBookData, udt_info: &UDTInfo) -> Result<u128, Error> {
-    let withdrawal_intent_code_hash: Hash = witness_data.withdrawal_intent_code_hash().into();
+    let withdrawal_intent_code_hash: Hash =
+        witness_data.info().withdrawal_intent_code_hash().into();
     let indexs = get_indexs(
         load_type_code_hash,
         |h| withdrawal_intent_code_hash == h,
@@ -95,7 +97,7 @@ pub fn withdrawal(witness_data: AccountBookData) -> Result<(), Error> {
 
     let (new_total_withdrawn, smt_key) = get_total_withdrawn(&cell_data, &witness_data)?;
 
-    let udt_info = UDTInfo::new(witness_data.xudt_script_hash().into())?;
+    let udt_info = UDTInfo::new(witness_data.info().xudt_script_hash().into())?;
     let (old_total_udt, new_total_udt) =
         super::check_input_type_proxy_lock(&witness_data, &udt_info)?;
     let withdrawal_udt = get_output_udt(&witness_data, &udt_info)?;

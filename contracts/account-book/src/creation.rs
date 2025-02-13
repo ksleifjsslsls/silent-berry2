@@ -12,7 +12,9 @@ use utils::{AccountBookProof, Hash, SmtKey};
 fn check_xudt_cell(witness_data: &AccountBookData) -> Result<(), Error> {
     let proxy_lock = load_cell_lock(0, Source::Output)?;
     let proxy_lock_code_hash: Hash = proxy_lock.code_hash().into();
-    if proxy_lock_code_hash != (witness_data.input_type_proxy_lock_code_hash()) {
+    let info = witness_data.info();
+
+    if proxy_lock_code_hash != (info.input_type_proxy_lock_code_hash()) {
         log::error!("input_type_proxy_lock code hash verification failed");
         return Err(Error::TxStructure);
     }
@@ -29,7 +31,7 @@ fn check_xudt_cell(witness_data: &AccountBookData) -> Result<(), Error> {
             Error::TxStructure
         })?
         .into();
-    if xudt_script_hash != witness_data.xudt_script_hash() {
+    if xudt_script_hash != info.xudt_script_hash() {
         log::error!("xudt script hash verification failed");
         return Err(Error::TxStructure);
     }
@@ -67,7 +69,7 @@ fn check_bounds() -> Result<(), Error> {
 fn check_cell_data(witness_data: &AccountBookData) -> Result<(), Error> {
     let cell_data = utils::load_account_bool_cell_data(0, Source::GroupOutput)?;
 
-    let level: u8 = witness_data.level().into();
+    let level: u8 = witness_data.info().level().into();
     let _ratios = crate::get_ratios(&cell_data, level)?;
 
     if cell_data.profit_distribution_number().raw_data().len() != level as usize {
