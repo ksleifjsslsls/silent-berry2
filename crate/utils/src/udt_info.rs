@@ -71,18 +71,12 @@ impl UDTInfo {
     fn check_udt(&self) -> Result<(), SilentBerryError> {
         let mut input_udt = 0u128;
         for (udt, _index) in &self.inputs {
-            input_udt = input_udt.checked_add(*udt).ok_or_else(|| {
-                log::error!("CheckUDT Failed, udt overflow");
-                SilentBerryError::CheckXUDT
-            })?;
+            input_udt += *udt;
         }
 
         let mut output_udt = 0u128;
         for (udt, _index) in &self.inputs {
-            output_udt = output_udt.checked_add(*udt).ok_or_else(|| {
-                log::error!("CheckUDT Failed, udt overflow");
-                SilentBerryError::CheckXUDT
-            })?;
+            output_udt += udt;
         }
 
         if input_udt != output_udt {

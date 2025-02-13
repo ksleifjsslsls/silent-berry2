@@ -65,17 +65,8 @@ fn get_total_withdrawn(
         }
     };
 
-    let total_income: u128 = witness_data.total_income_udt().unpack();
-    Ok((
-        total_income
-            .checked_mul(ratio as u128)
-            .ok_or(Error::AccountBookOverflow)?
-            .checked_div(100)
-            .ok_or(Error::AccountBookOverflow)?
-            .checked_div(num as u128)
-            .ok_or(Error::AccountBookOverflow)?,
-        smt_key,
-    ))
+    let total_income = witness_data.total_income_udt().unpack();
+    Ok((total_income * ratio as u128 / (100 * num as u128), smt_key))
 }
 
 fn get_output_udt(witness_data: &AccountBookData, udt_info: &UDTInfo) -> Result<u128, Error> {

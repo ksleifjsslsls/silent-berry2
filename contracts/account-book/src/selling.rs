@@ -69,11 +69,7 @@ pub fn selling(witness_data: AccountBookData) -> Result<(), Error> {
         let udt_info = utils::UDTInfo::new(witness_data.xudt_script_hash().into())?;
         let (old, new) = super::check_input_type_proxy_lock(&witness_data, &udt_info)?;
 
-        if old.checked_add(price).ok_or_else(|| {
-            log::error!("UDT overflow");
-            Error::AccountBookOverflow
-        })? != new
-        {
+        if old + price != new {
             log::error!(
                 "In and Out Error: input: {}, output: {}, price: {}",
                 old,
