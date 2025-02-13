@@ -192,13 +192,32 @@ pub fn build_account_book(
         .type_(account_book_script.pack())
         .build();
 
-    let cell_input = CellInput::new_builder()
-        .previous_output(
-            context.create_cell(cell_output.clone(), udt.0.to_le_bytes().to_vec().into()),
-        )
+    let cell_outpoint1 = ckb_testtool::context::random_out_point()
+        .as_builder()
+        .index(1u32.pack())
         .build();
+    context.create_cell_with_out_point(
+        cell_outpoint1.clone(),
+        cell_output.clone(),
+        udt.0.to_le_bytes().to_vec().into(),
+    );
+
+    let cell_input = CellInput::new_builder()
+        .previous_output(cell_outpoint1.clone())
+        .build();
+
+    let cell_outpoint2 = cell_outpoint1
+        .clone()
+        .as_builder()
+        .index(2u32.pack())
+        .build();
+    context.create_cell_with_out_point(
+        cell_outpoint2.clone(),
+        cell_output2.clone(),
+        cell_data.0.as_bytes(),
+    );
     let cell_input2 = CellInput::new_builder()
-        .previous_output(context.create_cell(cell_output2.clone(), cell_data.0.as_bytes()))
+        .previous_output(cell_outpoint2.clone())
         .build();
 
     tx.as_advanced_builder()

@@ -167,6 +167,13 @@ fn check_input_type_proxy_lock(
         return Err(Error::TxStructure);
     }
 
+    let outpoint1 = ckb_std::high_level::load_input_out_point(indexs[0], Source::Input)?;
+    let outpoint2 = ckb_std::high_level::load_input_out_point(0, Source::GroupInput)?;
+    if outpoint1.tx_hash() != outpoint2.tx_hash() {
+        log::error!("xUDT and AccountBook must come from the same Outpoint");
+        return Err(Error::TxStructure);
+    }
+
     let mut input_amount = None;
     for (udt, index) in &udt_info.inputs {
         let script = load_cell_lock(*index, Source::Input)?;

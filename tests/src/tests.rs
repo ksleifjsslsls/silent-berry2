@@ -7,8 +7,8 @@ use ckb_testtool::ckb_types::{
 };
 use spore_types::spore::SporeData;
 use types::{
-    AccountBookCellData, AccountBookData, AccountBookInfo, BuyIntentData, DobSellingData,
-    Uint128Opt, WithdrawalBuyer, WithdrawalIntentData, WithdrawalSporeInfo,
+    blockchain::OutPoint, AccountBookCellData, AccountBookData, AccountBookInfo, BuyIntentData,
+    DobSellingData, Uint128Opt, WithdrawalBuyer, WithdrawalIntentData, WithdrawalSporeInfo,
 };
 use utils::{Hash, SmtKey};
 
@@ -470,6 +470,8 @@ fn test_simple_withdrawal_suc() {
         .build();
 
     let account_book_script = build_account_book_script(&mut context, account_book_data.clone());
+    let input_account_book_tx_hash = ckb_testtool::context::random_hash();
+
     let tx = {
         let proxy_lock_script = build_proxy_lock_script(
             &mut context,
@@ -481,14 +483,21 @@ fn test_simple_withdrawal_suc() {
         );
 
         let input_cell = {
-            context.create_cell(
-                CellOutput::new_builder()
-                    .capacity(16.pack())
-                    .lock(proxy_lock_script.clone())
-                    .type_(xudt_script.clone().pack())
-                    .build(),
+            let cell_input_outpoint1 = OutPoint::new_builder()
+                .tx_hash(input_account_book_tx_hash.clone())
+                .index(1u32.pack())
+                .build();
+            let cell = CellOutput::new_builder()
+                .capacity(16.pack())
+                .lock(proxy_lock_script.clone())
+                .type_(xudt_script.clone().pack())
+                .build();
+            context.create_cell_with_out_point(
+                cell_input_outpoint1.clone(),
+                cell,
                 old_total_udt.to_le_bytes().to_vec().into(),
-            )
+            );
+            cell_input_outpoint1
         };
         let output_cell = {
             CellOutput::new_builder()
@@ -506,14 +515,22 @@ fn test_simple_withdrawal_suc() {
     };
     let tx = {
         let input_cell = {
-            context.create_cell(
-                CellOutput::new_builder()
-                    .capacity(1000.pack())
-                    .lock(def_lock_script.clone())
-                    .type_(account_book_script.clone().pack())
-                    .build(),
+            let cell_input_outpoint2 = OutPoint::new_builder()
+                .tx_hash(input_account_book_tx_hash)
+                .index(2u32.pack())
+                .build();
+
+            let cell = CellOutput::new_builder()
+                .capacity(1000.pack())
+                .lock(def_lock_script.clone())
+                .type_(account_book_script.clone().pack())
+                .build();
+            context.create_cell_with_out_point(
+                cell_input_outpoint2.clone(),
+                cell,
                 account_book_cell_data.as_bytes().into(),
-            )
+            );
+            cell_input_outpoint2
         };
         let output_cell = {
             CellOutput::new_builder()
