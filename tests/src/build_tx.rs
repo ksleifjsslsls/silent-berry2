@@ -152,8 +152,11 @@ pub fn build_buy_intent_cell(
 pub fn build_account_book_script(
     context: &mut Context,
     data: types::AccountBookData,
+    type_id: Option<Hash>,
 ) -> Option<Script> {
-    let args = ckb_hash(data.info().as_slice());
+    let type_id = type_id.unwrap_or([12u8; 32].into());
+    let args = [ckb_hash(data.info().as_slice()), type_id.into()].concat();
+
     let out_point = context.deploy_cell_by_name(ACCOUNT_BOOK_NAME);
     Some(
         context
@@ -169,7 +172,7 @@ pub fn build_account_book(
     cell_data: (AccountBookCellData, AccountBookCellData),
     udt: (u128, u128),
 ) -> TransactionView {
-    let account_book_script = build_account_book_script(context, data.clone());
+    let account_book_script = build_account_book_script(context, data.clone(), None);
     let xudt_script = build_xudt_script(context);
     let account_book_lock_script = build_always_suc_script(context, &[]);
     let proxy_lock_script = build_proxy_lock_script(
@@ -323,7 +326,7 @@ pub fn get_spore_level(tx: &TransactionView) -> u8 {
 }
 
 pub fn get_account_script_hash(data: types::AccountBookData) -> [u8; 32] {
-    build_account_book_script(&mut new_context(), data)
+    build_account_book_script(&mut new_context(), data, None)
         .as_ref()
         .unwrap()
         .calc_script_hash()

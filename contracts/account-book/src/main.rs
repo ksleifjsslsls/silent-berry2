@@ -27,7 +27,7 @@ mod withdrawal;
 
 fn load_verified_data() -> Result<AccountBookData, Error> {
     let args = utils::load_args_to_hash()?;
-    if args.len() != 1 {
+    if args.len() != 2 {
         log::error!("Args len is not 1 {}", args.len());
         return Err(Error::VerifiedData);
     }
@@ -251,6 +251,7 @@ fn get_ratios(cell_data: &AccountBookCellData, level: u8) -> Result<Vec<u8>, Err
 }
 
 fn program_entry2() -> Result<(), Error> {
+    ckb_std::type_id::check_type_id(utils::HASH_SIZE)?;
     let witness_data = load_verified_data()?;
 
     if is_creation()? {

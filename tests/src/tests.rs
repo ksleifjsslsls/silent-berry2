@@ -469,7 +469,8 @@ fn test_simple_withdrawal_suc() {
         })
         .build();
 
-    let account_book_script = build_account_book_script(&mut context, account_book_data.clone());
+    let account_book_script =
+        build_account_book_script(&mut context, account_book_data.clone(), None);
     let input_account_book_tx_hash = ckb_testtool::context::random_hash();
 
     let tx = {
@@ -700,9 +701,27 @@ fn create_account_book() {
         .profit_distribution_number([10, 20, 30, 40, 50].pack())
         .smt_root_hash(smt.root_hash().into())
         .build();
+    let tx = TransactionBuilder::default()
+        .input(
+            CellInput::new_builder()
+                .previous_output(context.create_cell(ckb_cell, Default::default()))
+                .build(),
+        )
+        .build();
+    let inputcell = tx.inputs().get(0).unwrap();
 
-    let account_book_script =
-        build_account_book_script(&mut context, account_book_data.clone()).unwrap();
+    let mut hasher = ckb_testtool::ckb_hash::new_blake2b();
+    hasher.update(inputcell.as_slice());
+    hasher.update(&1u64.to_le_bytes());
+    let mut account_book_type_id = [0u8; 32];
+    hasher.finalize(&mut account_book_type_id);
+
+    let account_book_script = build_account_book_script(
+        &mut context,
+        account_book_data.clone(),
+        Some(account_book_type_id.into()),
+    )
+    .unwrap();
 
     let accout_book_cell = CellOutput::new_builder()
         .capacity(16u64.pack())
@@ -721,12 +740,8 @@ fn create_account_book() {
         .lock(def_lock_script1.clone())
         .build();
 
-    let tx = TransactionBuilder::default()
-        .input(
-            CellInput::new_builder()
-                .previous_output(context.create_cell(ckb_cell, Default::default()))
-                .build(),
-        )
+    let tx = tx
+        .as_advanced_builder()
         .output(xudt_cell)
         .output_data(0u128.to_le_bytes().to_vec().pack())
         .witness(Default::default())
