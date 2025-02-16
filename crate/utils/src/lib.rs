@@ -204,3 +204,14 @@ pub fn check_since(index: usize, source: Source, expire_since: u64) -> Result<bo
 
     Ok(since >= expire_since)
 }
+
+pub fn from_same_tx_hash(index: usize) -> Result<(), Error> {
+    let outpoint1 = ckb_std::high_level::load_input_out_point(index, Source::Input)?;
+    let outpoint2 = ckb_std::high_level::load_input_out_point(0, Source::GroupInput)?;
+    if outpoint1.tx_hash() != outpoint2.tx_hash() {
+        log::error!("xUDT and AccountBook must come from the same Outpoint");
+        return Err(Error::TxStructure);
+    }
+
+    Ok(())
+}

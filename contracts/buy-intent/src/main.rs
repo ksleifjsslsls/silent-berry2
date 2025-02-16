@@ -200,7 +200,8 @@ fn create_intent(witness_data: BuyIntentData, udt_info: UDTInfo) -> Result<(), E
 
 fn selling(witness_data: BuyIntentData, accountbook_hash: Hash) -> Result<(), Error> {
     check_account_book(accountbook_hash, witness_data.price().unpack())?;
-    check_input_dob_selling(witness_data.dob_selling_script_hash().into())?;
+    let dob_selling_index = check_input_dob_selling(witness_data.dob_selling_script_hash().into())?;
+    utils::from_same_tx_hash(dob_selling_index)?;
     Ok(())
 }
 
@@ -214,6 +215,7 @@ fn revocation(witness_data: BuyIntentData, _udt_info: UDTInfo) -> Result<(), Err
         log::error!("DobSelling is not in Input[0]");
         return Err(Error::CheckScript);
     }
+    utils::from_same_tx_hash(dob_selling_index)?;
 
     let owner_script_hash: Hash = witness_data.owner_script_hash().into();
     let lock_script_hash = load_cell_lock_hash(1, Source::Output)?;

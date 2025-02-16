@@ -154,15 +154,23 @@ fn test_revocation_buy_intent() {
         .as_builder()
         .owner_script_hash(def_lock_script.calc_script_hash())
         .build();
+    let input_buy_intent_tx_hash = ckb_testtool::context::random_hash();
     let cell_input_dob_selling = {
         let dob_selling = build_dob_selling_script(&mut context, &dob_selling_data);
         let dob_selling_udt = build_xudt_cell(&mut context, dob_selling.clone());
 
+        let dob_selling_outpoint = OutPoint::new_builder()
+            .tx_hash(input_buy_intent_tx_hash.clone())
+            .index(0u32.pack())
+            .build();
+
+        context.create_cell_with_out_point(
+            dob_selling_outpoint.clone(),
+            dob_selling_udt.clone(),
+            DATA_ASSET_AMOUNT.to_le_bytes().to_vec().into(),
+        );
         CellInput::new_builder()
-            .previous_output(context.create_cell(
-                dob_selling_udt.clone(),
-                DATA_ASSET_AMOUNT.to_le_bytes().to_vec().into(),
-            ))
+            .previous_output(dob_selling_outpoint)
             .build()
     };
     let tx = TransactionBuilder::default()
@@ -195,8 +203,17 @@ fn test_revocation_buy_intent() {
             .concat(),
         );
 
+        let buy_intent_outpoint = OutPoint::new_builder()
+            .tx_hash(input_buy_intent_tx_hash)
+            .index(1u32.pack())
+            .build();
+        context.create_cell_with_out_point(
+            buy_intent_outpoint.clone(),
+            buy_intent_script.clone(),
+            Default::default(),
+        );
         CellInput::new_builder()
-            .previous_output(context.create_cell(buy_intent_script.clone(), Default::default()))
+            .previous_output(buy_intent_outpoint)
             .since(10000.pack())
             .build()
     };
@@ -268,6 +285,7 @@ fn test_simple_selling() {
     );
     let account_book_script_hash = get_account_script_hash(account_book_data);
 
+    let input_buy_intent_tx_hash = ckb_testtool::context::random_hash();
     // DOB Selling
     let dob_selling_data = def_dob_selling_data(&mut context, &spore_data)
         .as_builder()
@@ -277,11 +295,18 @@ fn test_simple_selling() {
         let dob_selling = build_dob_selling_script(&mut context, &dob_selling_data);
         let dob_selling_udt = build_xudt_cell(&mut context, dob_selling.clone());
 
+        let dob_selling_outpoint = OutPoint::new_builder()
+            .tx_hash(input_buy_intent_tx_hash.clone())
+            .index(0u32.pack())
+            .build();
+
+        context.create_cell_with_out_point(
+            dob_selling_outpoint.clone(),
+            dob_selling_udt.clone(),
+            DATA_ASSET_AMOUNT.to_le_bytes().to_vec().into(),
+        );
         CellInput::new_builder()
-            .previous_output(context.create_cell(
-                dob_selling_udt.clone(),
-                DATA_ASSET_AMOUNT.to_le_bytes().to_vec().into(),
-            ))
+            .previous_output(dob_selling_outpoint)
             .build()
     };
     let tx = tx
@@ -317,8 +342,17 @@ fn test_simple_selling() {
             .concat(),
         );
 
+        let buy_intent_outpoint = OutPoint::new_builder()
+            .tx_hash(input_buy_intent_tx_hash)
+            .index(1u32.pack())
+            .build();
+        context.create_cell_with_out_point(
+            buy_intent_outpoint.clone(),
+            buy_intent_script.clone(),
+            Default::default(),
+        );
         CellInput::new_builder()
-            .previous_output(context.create_cell(buy_intent_script.clone(), Default::default()))
+            .previous_output(buy_intent_outpoint)
             .build()
     };
 

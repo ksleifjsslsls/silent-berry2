@@ -166,13 +166,7 @@ fn check_input_type_proxy_lock(
         log::error!("Multiple input_type_proxy_locks found in Inputs");
         return Err(Error::TxStructure);
     }
-
-    let outpoint1 = ckb_std::high_level::load_input_out_point(indexs[0], Source::Input)?;
-    let outpoint2 = ckb_std::high_level::load_input_out_point(0, Source::GroupInput)?;
-    if outpoint1.tx_hash() != outpoint2.tx_hash() {
-        log::error!("xUDT and AccountBook must come from the same Outpoint");
-        return Err(Error::TxStructure);
-    }
+    utils::from_same_tx_hash(indexs[0])?;
 
     let mut input_amount = None;
     for (udt, index) in &udt_info.inputs {
