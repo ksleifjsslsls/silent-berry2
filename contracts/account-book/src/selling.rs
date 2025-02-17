@@ -6,7 +6,7 @@ use ckb_std::{
     log,
 };
 use spore_types::spore::SporeData;
-use types::AccountBookData;
+use types::{AccountBookCellData, AccountBookData};
 use utils::Hash;
 
 fn load_spore(source: Source) -> Result<(SporeData, Hash), Error> {
@@ -32,9 +32,11 @@ fn load_spore(source: Source) -> Result<(SporeData, Hash), Error> {
     }
 }
 
-pub fn selling(witness_data: AccountBookData) -> Result<(), Error> {
-    let (cell_data, old_smt_hash) = super::load_verified_cell_data(true)?;
-
+pub fn selling(
+    witness_data: AccountBookData,
+    cell_data: AccountBookCellData,
+    old_smt_hash: Hash,
+) -> Result<(), Error> {
     let (spore_data, spore_id) = load_spore(Source::Output)?;
 
     // Check cluster id

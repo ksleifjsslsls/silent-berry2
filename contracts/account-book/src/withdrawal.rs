@@ -90,9 +90,11 @@ fn get_output_udt(cell_data: &AccountBookCellData, udt_info: &UDTInfo) -> Result
     Err(Error::TxStructure)
 }
 
-pub fn withdrawal(witness_data: AccountBookData) -> Result<(), Error> {
-    let (cell_data, old_smt_hash) = super::load_verified_cell_data(false)?;
-
+pub fn withdrawal(
+    witness_data: AccountBookData,
+    cell_data: AccountBookCellData,
+    old_smt_hash: Hash,
+) -> Result<(), Error> {
     let (new_total_withdrawn, smt_key) = get_total_withdrawn(&cell_data, &witness_data)?;
 
     let udt_info = UDTInfo::new(cell_data.xudt_script_hash().into())?;

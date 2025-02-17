@@ -72,13 +72,14 @@ fn verify_cell_data(old: &AccountBookCellData, new: &AccountBookCellData) -> Res
 
     Ok(())
 }
-fn load_verified_cell_data(is_selling: bool) -> Result<(AccountBookCellData, Hash), Error> {
+fn load_verified_cell_data() -> Result<(AccountBookCellData, Hash, bool), Error> {
     let old_data = utils::load_account_bool_cell_data(0, Source::GroupInput)?;
     let new_data = utils::load_account_bool_cell_data(0, Source::GroupOutput)?;
     verify_cell_data(&old_data, &new_data)?;
 
     let old_buyer_count: u32 = old_data.buyer_count().unpack();
     let new_buyer_count: u32 = new_data.buyer_count().unpack();
+    let is_selling = is_selling(&new_data)?;
     if is_selling && old_buyer_count + 1 != new_buyer_count {
         log::error!(
             "CellData buyer count incorrect: {}, {}, is_selling: {}",
@@ -92,13 +93,11 @@ fn load_verified_cell_data(is_selling: bool) -> Result<(AccountBookCellData, Has
         return Err(Error::AccountBookModified);
     }
 
-    Ok((new_data, old_data.smt_root_hash().into()))
+    Ok((new_data, old_data.smt_root_hash().into(), is_selling))
 }
 
-fn is_selling() -> Result<bool, Error> {
-    let cell_data = utils::load_account_bool_cell_data(0, Source::GroupOutput)?;
-
-    let dob_selling_code_hash: Hash = cell_data.dob_selling_code_hash().into();
+fn is_selling(new_cell_data: &AccountBookCellData) -> Result<bool, Error> {
+    let dob_selling_code_hash: Hash = new_cell_data.dob_selling_code_hash().into();
     if !get_indexs(
         load_lock_code_hash,
         |h| dob_selling_code_hash == h,
@@ -108,7 +107,7 @@ fn is_selling() -> Result<bool, Error> {
     {
         Ok(true)
     } else {
-        let withdrawal_code_hash: Hash = cell_data.withdrawal_intent_code_hash().into();
+        let withdrawal_code_hash: Hash = new_cell_data.withdrawal_intent_code_hash().into();
         if !get_indexs(
             load_type_code_hash,
             |h| withdrawal_code_hash == h,
@@ -123,7 +122,6 @@ fn is_selling() -> Result<bool, Error> {
         }
     }
 }
-
 fn check_input_type_proxy_lock(
     cell_data: &AccountBookCellData,
     udt_info: &UDTInfo,
@@ -233,10 +231,11 @@ fn program_entry2() -> Result<(), Error> {
         the_only(Source::GroupInput)?;
         the_only(Source::GroupOutput)?;
 
-        if is_selling()? {
-            selling::selling(witness_data)
+        let (cell_data, old_smt_hash, is_selling) = load_verified_cell_data()?;
+        if is_selling {
+            selling::selling(witness_data, cell_data, old_smt_hash)
         } else {
-            withdrawal::withdrawal(witness_data)
+            withdrawal::withdrawal(witness_data, cell_data, old_smt_hash)
         }
     }
 }
