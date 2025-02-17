@@ -150,6 +150,7 @@ pub fn build_buy_intent_cell(
 }
 
 pub fn build_account_book_script(context: &mut Context, type_id: Option<Hash>) -> Option<Script> {
+    println!("account book type id: {:?}", type_id);
     let type_id = type_id.unwrap_or([12u8; 32].into());
     let args: [u8; 32] = type_id.into();
 
@@ -164,11 +165,12 @@ pub fn build_account_book_script(context: &mut Context, type_id: Option<Hash>) -
 pub fn build_account_book(
     context: &mut Context,
     tx: TransactionView,
+    type_id: Hash,
     data: AccountBookData,
     cell_data: (AccountBookCellData, AccountBookCellData),
     udt: (u128, u128),
 ) -> TransactionView {
-    let account_book_script = build_account_book_script(context, None);
+    let account_book_script = build_account_book_script(context, Some(type_id));
     let xudt_script = build_xudt_script(context);
     let account_book_lock_script = build_always_suc_script(context, &[]);
     let proxy_lock_script = build_proxy_lock_script(
@@ -237,12 +239,21 @@ pub fn build_account_book(
         .build()
 }
 
-pub fn build_cluster(context: &mut Context, cluster: (&str, &str)) -> ([u8; 32], CellDep) {
+pub fn build_cluster(
+    context: &mut Context,
+    cluster: (&str, &str),
+    cluster_lock: Script,
+) -> ([u8; 32], CellDep) {
     let (cluster_out_point, _) =
         crate::spore::build_spore_contract_materials(context, CLUSTER_NAME);
     let cluster = crate::spore::build_serialized_cluster_data(cluster.0, cluster.1);
-    let (cluster_id, _, _, _, cluster_dep) =
-        crate::spore::build_cluster_materials(context, &cluster_out_point, cluster, 0, &[]);
+    let (cluster_id, _, _, _, cluster_dep) = crate::spore::build_cluster_materials(
+        context,
+        &cluster_out_point,
+        cluster,
+        0,
+        cluster_lock,
+    );
 
     (cluster_id, cluster_dep)
 }
@@ -319,16 +330,6 @@ pub fn get_spore_level(tx: &TransactionView) -> u8 {
     // let content = spore_data.content();
 
     panic!("unsupport")
-}
-
-pub fn get_account_script_hash() -> [u8; 32] {
-    build_account_book_script(&mut new_context(), None)
-        .as_ref()
-        .unwrap()
-        .calc_script_hash()
-        .as_slice()
-        .try_into()
-        .unwrap()
 }
 
 pub fn update_accountbook(

@@ -152,6 +152,21 @@ pub fn build_normal_cell_dep_with_lock_args(
     CellDep::new_builder().out_point(outpoint).build()
 }
 
+pub fn build_normal_cell_dep_with_lock(
+    context: &mut Context,
+    data: &[u8],
+    type_: Option<Script>,
+    lock: Script,
+) -> CellDep {
+    let output = CellOutput::new_builder()
+        .capacity((data.len() as u64).pack())
+        .lock(lock)
+        .type_(ScriptOpt::new_builder().set(type_).build())
+        .build();
+    let outpoint = context.create_cell(output, Bytes::copy_from_slice(data));
+    CellDep::new_builder().out_point(outpoint).build()
+}
+
 pub fn build_spore_contract_materials(
     context: &mut Context,
     binary_name: &str,
@@ -166,7 +181,7 @@ pub fn build_cluster_materials(
     cluster_out_point: &OutPoint,
     cluster_data: ClusterData,
     cluster_out_index: usize,
-    lock_args: &[u8],
+    cluster_lock: Script,
 ) -> ([u8; 32], Option<Script>, CellInput, CellOutput, CellDep) {
     let normal_input = build_normal_input(context);
     let cluster_id = build_type_id(&normal_input, cluster_out_index);
@@ -174,11 +189,11 @@ pub fn build_cluster_materials(
         build_spore_type_script(context, cluster_out_point, cluster_id.to_vec().into());
     let cluster_input = build_cluster_input(context, cluster_data.clone(), cluster_type.clone());
     let cluster_output = build_normal_output_cell_with_type(context, cluster_type.clone());
-    let cluster_dep = build_normal_cell_dep_with_lock_args(
+    let cluster_dep = build_normal_cell_dep_with_lock(
         context,
         cluster_data.as_slice(),
         cluster_type.clone(),
-        lock_args,
+        cluster_lock,
     );
     (
         cluster_id,

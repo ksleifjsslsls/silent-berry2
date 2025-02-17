@@ -57,8 +57,9 @@ fn def_account_book_cell_data(context: &mut Context) -> AccountBookCellData {
         .build()
 }
 
-fn def_spore(context: &mut Context) -> (SporeData, CellDep) {
-    let (cluster_id, cluster_deps) = build_cluster(context, ("Spore Cluster", "Test Cluster"));
+fn def_spore(context: &mut Context, cluster_lock: Script) -> (SporeData, CellDep) {
+    let (cluster_id, cluster_deps) =
+        build_cluster(context, ("Spore Cluster", "Test Cluster"), cluster_lock);
     let spore_data = crate::spore::build_serialized_spore_data(
         "{\"dna\":\"4000000000002\"}".as_bytes().to_vec(),
         "dob/1",
@@ -89,7 +90,8 @@ fn test_simple_buy_intent() {
         build_input(build_out_point1(&mut context, lock_script.clone())),
     ];
 
-    let (spore_data, _) = def_spore(&mut context);
+    let def_cluster_lock = build_always_suc_script(&mut context, &[2u8; 32]);
+    let (spore_data, _) = def_spore(&mut context, def_cluster_lock);
     let dob_selling_data = def_dob_selling_data(&mut context, &spore_data);
     let dob_selling = build_dob_selling_script(&mut context, &dob_selling_data);
     let dob_selling_udt = build_xudt_cell(&mut context, dob_selling.clone());
@@ -141,7 +143,8 @@ fn test_simple_buy_intent() {
 fn test_revocation_buy_intent() {
     let mut context = new_context();
     let def_lock_script: Script = build_always_suc_script(&mut context, &[]);
-    let (spore_data, _cluster_deps) = def_spore(&mut context);
+    let def_cluster_lock = build_always_suc_script(&mut context, &[2u8; 32]);
+    let (spore_data, _cluster_deps) = def_spore(&mut context, def_cluster_lock);
     let account_book_script_hash = [0u8; 32];
 
     // DOB Selling
@@ -241,9 +244,14 @@ fn test_revocation_buy_intent() {
 fn test_simple_selling() {
     let mut context = new_context();
     let def_lock_script: Script = build_always_suc_script(&mut context, &[]);
-    let (spore_data, cluster_deps) = def_spore(&mut context);
 
-    println!("spore data: {:?}", spore_data.clone().as_builder());
+    let account_book_type_id = [14u8; 32];
+
+    let account_book_script =
+        build_account_book_script(&mut context, Some(account_book_type_id.into())).unwrap();
+    let lock_proxy_script =
+        build_proxy_lock_script(&mut context, account_book_script.calc_script_hash().into());
+    let (spore_data, cluster_deps) = def_spore(&mut context, lock_proxy_script);
 
     let tx = TransactionBuilder::default().build();
 
@@ -268,17 +276,19 @@ fn test_simple_selling() {
     let tx = build_account_book(
         &mut context,
         tx,
+        account_book_type_id.into(),
         account_book_data.clone(),
         (ab_cell_data, ab_cell_data_new),
         (10000, 10000 + DATA_ASSET_AMOUNT),
     );
-    let account_book_script_hash = get_account_script_hash();
 
     let input_buy_intent_tx_hash = ckb_testtool::context::random_hash();
     // DOB Selling
+    let account_book_script =
+        build_account_book_script(&mut context, Some(account_book_type_id.into())).unwrap();
     let dob_selling_data = def_dob_selling_data(&mut context, &spore_data)
         .as_builder()
-        .account_book_script_hash(account_book_script_hash.pack())
+        .account_book_script_hash(account_book_script.calc_script_hash())
         .build();
     let cell_input_dob_selling = {
         let dob_selling = build_dob_selling_script(&mut context, &dob_selling_data);
@@ -325,7 +335,11 @@ fn test_simple_selling() {
             1000,
             def_lock_script.clone(),
             &[
-                account_book_script_hash,
+                account_book_script
+                    .calc_script_hash()
+                    .as_slice()
+                    .try_into()
+                    .unwrap(),
                 ckb_hash(buy_intent_data.as_slice()),
             ]
             .concat(),
@@ -373,7 +387,8 @@ fn test_simple_withdrawal_intent() {
     let tx = TransactionBuilder::default().build();
     let def_lock_script = build_always_suc_script(&mut context, &[]);
 
-    let (spore_data, _cluster_dep) = def_spore(&mut context);
+    let def_cluster_lock = build_always_suc_script(&mut context, &[2u8; 32]);
+    let (spore_data, _cluster_dep) = def_spore(&mut context, def_cluster_lock);
     let tx = build_transfer_spore(&mut context, tx, &spore_data);
     let tx = context.complete_tx(tx);
 

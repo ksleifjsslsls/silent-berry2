@@ -4,7 +4,7 @@ use types::error::SilentBerryError as Error;
 pub const HASH_SIZE: usize = 32;
 pub const CKB_HASH_PERSONALIZATION: &[u8] = b"ckb-default-hash";
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Hash(pub [u8; HASH_SIZE]);
 impl From<[u8; 32]> for Hash {
     fn from(value: [u8; 32]) -> Self {
