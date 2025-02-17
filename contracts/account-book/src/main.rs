@@ -18,33 +18,12 @@ use ckb_std::{
     log,
 };
 pub use types::error::SilentBerryError as Error;
-use types::{AccountBookCellData, AccountBookData};
+use types::AccountBookCellData;
 use utils::{get_indexs, load_lock_code_hash, load_type_code_hash, Hash, UDTInfo};
 
 mod creation;
 mod selling;
 mod withdrawal;
-
-fn load_verified_data() -> Result<AccountBookData, Error> {
-    let args = utils::load_args_to_hash()?;
-    if args.len() != 2 {
-        log::error!("Args len is not 1 {}", args.len());
-        return Err(Error::VerifiedData);
-    }
-    let witness_data_hash = args[0].clone();
-
-    let witness_data = utils::load_account_book_data(0, Source::GroupOutput)?;
-    let info = witness_data.info();
-
-    let witness_hash = { Hash::ckb_hash(info.as_slice()) };
-
-    if witness_hash != witness_data_hash {
-        log::error!("Witness data Hash != Args");
-        return Err(Error::VerifiedData);
-    }
-
-    Ok(witness_data)
-}
 
 fn is_creation() -> Result<bool, Error> {
     load_cell_type_hash(0, Source::GroupOutput)?.ok_or_else(|| {
@@ -116,10 +95,10 @@ fn load_verified_cell_data(is_selling: bool) -> Result<(AccountBookCellData, Has
     Ok((new_data, old_data.smt_root_hash().into()))
 }
 
-fn is_selling(witness_data: &AccountBookData) -> Result<bool, Error> {
-    let info = witness_data.info();
+fn is_selling() -> Result<bool, Error> {
+    let cell_data = utils::load_account_bool_cell_data(0, Source::GroupOutput)?;
 
-    let dob_selling_code_hash: Hash = info.dob_selling_code_hash().into();
+    let dob_selling_code_hash: Hash = cell_data.dob_selling_code_hash().into();
     if !get_indexs(
         load_lock_code_hash,
         |h| dob_selling_code_hash == h,
@@ -129,7 +108,7 @@ fn is_selling(witness_data: &AccountBookData) -> Result<bool, Error> {
     {
         Ok(true)
     } else {
-        let withdrawal_code_hash: Hash = info.withdrawal_intent_code_hash().into();
+        let withdrawal_code_hash: Hash = cell_data.withdrawal_intent_code_hash().into();
         if !get_indexs(
             load_type_code_hash,
             |h| withdrawal_code_hash == h,
@@ -146,7 +125,7 @@ fn is_selling(witness_data: &AccountBookData) -> Result<bool, Error> {
 }
 
 fn check_input_type_proxy_lock(
-    witness_data: &AccountBookData,
+    cell_data: &AccountBookCellData,
     udt_info: &UDTInfo,
 ) -> Result<(u128, u128), Error> {
     let self_script_hash: Hash = load_cell_type_hash(0, Source::GroupInput)?
@@ -156,7 +135,7 @@ fn check_input_type_proxy_lock(
         })?
         .into();
 
-    let proxy_lock_code_hash: Hash = witness_data.info().input_type_proxy_lock_code_hash().into();
+    let proxy_lock_code_hash: Hash = cell_data.input_type_proxy_lock_code_hash().into();
     let indexs = get_indexs(
         load_lock_code_hash,
         |h| proxy_lock_code_hash == h,
@@ -245,8 +224,8 @@ fn get_ratios(cell_data: &AccountBookCellData, level: u8) -> Result<Vec<u8>, Err
 }
 
 fn program_entry2() -> Result<(), Error> {
-    ckb_std::type_id::check_type_id(utils::HASH_SIZE)?;
-    let witness_data = load_verified_data()?;
+    ckb_std::type_id::check_type_id(0)?;
+    let witness_data = utils::load_account_book_data(0, Source::GroupOutput)?;
 
     if is_creation()? {
         creation::creation(witness_data)
@@ -254,7 +233,7 @@ fn program_entry2() -> Result<(), Error> {
         the_only(Source::GroupInput)?;
         the_only(Source::GroupOutput)?;
 
-        if is_selling(&witness_data)? {
+        if is_selling()? {
             selling::selling(witness_data)
         } else {
             withdrawal::withdrawal(witness_data)

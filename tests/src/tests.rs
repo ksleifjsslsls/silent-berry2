@@ -7,8 +7,8 @@ use ckb_testtool::ckb_types::{
 };
 use spore_types::spore::SporeData;
 use types::{
-    blockchain::OutPoint, AccountBookCellData, AccountBookData, AccountBookInfo, BuyIntentData,
-    DobSellingData, Uint128Opt, WithdrawalBuyer, WithdrawalIntentData, WithdrawalSporeInfo,
+    blockchain::OutPoint, AccountBookCellData, AccountBookData, BuyIntentData, DobSellingData,
+    Uint128Opt, WithdrawalBuyer, WithdrawalIntentData, WithdrawalSporeInfo,
 };
 use utils::{Hash, SmtKey};
 
@@ -41,19 +41,14 @@ fn def_withdrawal_intent_data(context: &mut Context) -> WithdrawalIntentData {
         .owner_script_hash([0u8; 32].pack())
         .build()
 }
-fn def_account_book_data(context: &mut Context) -> AccountBookData {
-    let info = AccountBookInfo::new_builder()
+fn def_account_book_cell_data(context: &mut Context) -> AccountBookCellData {
+    AccountBookCellData::new_builder()
         .dob_selling_code_hash((*DOBSellingCodeHash).pack())
         .buy_intent_code_hash((*BuyIntentCodeHash).pack())
         .withdrawal_intent_code_hash((*WithdrawalIntentCodeHash).pack())
         .xudt_script_hash(get_opt_script_hash(&build_xudt_script(context)).pack())
         .input_type_proxy_lock_code_hash((*InputTypeProxyLockCodeHash).pack())
         .cluster_id([3u8; 32].pack())
-        .build();
-    AccountBookData::new_builder().info(info).build()
-}
-fn def_account_book_cell_data(_context: &mut Context) -> AccountBookCellData {
-    AccountBookCellData::new_builder()
         .auther_id([1u8; 32].pack())
         .platform_id([2u8; 32].pack())
         .price(DATA_ASSET_AMOUNT.pack())
@@ -248,25 +243,19 @@ fn test_simple_selling() {
     let def_lock_script: Script = build_always_suc_script(&mut context, &[]);
     let (spore_data, cluster_deps) = def_spore(&mut context);
 
+    println!("spore data: {:?}", spore_data.clone().as_builder());
+
     let tx = TransactionBuilder::default().build();
 
     // Account Book
-    let account_book_data = def_account_book_data(&mut context);
-    let account_book_info = account_book_data.info();
-    let account_book_data = account_book_data
-        .as_builder()
-        .info(
-            account_book_info
-                .as_builder()
-                .level(2.into())
-                .cluster_id(get_cluster_id(&spore_data).pack())
-                .build(),
-        )
+    let account_book_data = AccountBookData::new_builder()
         // .proof(smt_proof.pack())
         .build();
     let ab_cell_data = def_account_book_cell_data(&mut context)
         .as_builder()
         // .smt_root_hash(old_smt_hash.into())
+        .level(2.into())
+        .cluster_id(get_cluster_id(&spore_data).pack())
         .buyer_count(15u32.pack())
         .build();
     let ab_cell_data_new = ab_cell_data
@@ -283,7 +272,7 @@ fn test_simple_selling() {
         (ab_cell_data, ab_cell_data_new),
         (10000, 10000 + DATA_ASSET_AMOUNT),
     );
-    let account_book_script_hash = get_account_script_hash(account_book_data);
+    let account_book_script_hash = get_account_script_hash();
 
     let input_buy_intent_tx_hash = ckb_testtool::context::random_hash();
     // DOB Selling
@@ -373,7 +362,7 @@ fn test_simple_selling() {
 
     let tx = update_accountbook(&mut context, tx, DATA_ASSET_AMOUNT);
     let tx = context.complete_tx(tx);
-    // print_tx_info(&context, &tx);
+    print_tx_info(&context, &tx);
     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 }
 
@@ -479,21 +468,13 @@ fn test_simple_withdrawal_suc() {
     // Account Book
     let account_book_cell_data = def_account_book_cell_data(&mut context)
         .as_builder()
+        .level(2.into())
+        .cluster_id(cluster_id.clone().into())
         .profit_distribution_ratio(ratios.pack())
         .profit_distribution_number(buyers.pack())
         .smt_root_hash(old_hash.into())
         .build();
-    let account_book_data = def_account_book_data(&mut context);
-    let account_book_info = account_book_data.info();
-    let account_book_data = account_book_data
-        .as_builder()
-        .info(
-            account_book_info
-                .as_builder()
-                .level(2.into())
-                .cluster_id(cluster_id.clone().into())
-                .build(),
-        )
+    let account_book_data = AccountBookData::new_builder()
         .total_income_udt(total_income.pack())
         .proof(proof.pack())
         .withdrawn_udt({
@@ -503,8 +484,7 @@ fn test_simple_withdrawal_suc() {
         })
         .build();
 
-    let account_book_script =
-        build_account_book_script(&mut context, account_book_data.clone(), None);
+    let account_book_script = build_account_book_script(&mut context, None);
     let input_account_book_tx_hash = ckb_testtool::context::random_hash();
 
     let tx = {
@@ -721,15 +701,12 @@ fn create_account_book() {
 
     let smt = AccountBook::new_empty();
 
-    let account_book_data = def_account_book_data(&mut context);
-    let account_book_info = account_book_data.info();
-    let account_book_data = account_book_data
-        .as_builder()
-        .info(account_book_info.as_builder().level(5u8.into()).build())
+    let account_book_data = AccountBookData::new_builder()
         .proof(smt.proof(SmtKey::Auther).pack())
         .build();
     let account_book_cell_data = def_account_book_cell_data(&mut context)
         .as_builder()
+        .level(5u8.into())
         .buyer_count(0u32.pack())
         .profit_distribution_ratio([20, 20, 20, 10, 10, 10, 10].pack())
         .profit_distribution_number([10, 20, 30, 40, 50].pack())
@@ -750,12 +727,8 @@ fn create_account_book() {
     let mut account_book_type_id = [0u8; 32];
     hasher.finalize(&mut account_book_type_id);
 
-    let account_book_script = build_account_book_script(
-        &mut context,
-        account_book_data.clone(),
-        Some(account_book_type_id.into()),
-    )
-    .unwrap();
+    let account_book_script =
+        build_account_book_script(&mut context, Some(account_book_type_id.into())).unwrap();
 
     let accout_book_cell = CellOutput::new_builder()
         .capacity(16u64.pack())

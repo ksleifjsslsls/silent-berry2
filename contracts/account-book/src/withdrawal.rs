@@ -15,11 +15,10 @@ fn get_total_withdrawn(
     cell_data: &AccountBookCellData,
     witness_data: &AccountBookData,
 ) -> Result<(u128, SmtKey), Error> {
-    let info = witness_data.info();
-    let account_book_level: u8 = info.level().into();
+    let account_book_level: u8 = cell_data.level().into();
     let ratios = crate::get_ratios(cell_data, account_book_level)?;
 
-    let buyer = get_buyer(info.withdrawal_intent_code_hash().into())?;
+    let buyer = get_buyer(cell_data.withdrawal_intent_code_hash().into())?;
 
     let (ratio, num, smt_key) = match buyer.to_enum() {
         WithdrawalBuyerUnion::WithdrawalSporeInfo(spore_info) => {
@@ -70,9 +69,8 @@ fn get_total_withdrawn(
     Ok((total_income * ratio as u128 / (100 * num as u128), smt_key))
 }
 
-fn get_output_udt(witness_data: &AccountBookData, udt_info: &UDTInfo) -> Result<u128, Error> {
-    let withdrawal_intent_code_hash: Hash =
-        witness_data.info().withdrawal_intent_code_hash().into();
+fn get_output_udt(cell_data: &AccountBookCellData, udt_info: &UDTInfo) -> Result<u128, Error> {
+    let withdrawal_intent_code_hash: Hash = cell_data.withdrawal_intent_code_hash().into();
     let indexs = get_indexs(
         load_type_code_hash,
         |h| withdrawal_intent_code_hash == h,
@@ -97,10 +95,9 @@ pub fn withdrawal(witness_data: AccountBookData) -> Result<(), Error> {
 
     let (new_total_withdrawn, smt_key) = get_total_withdrawn(&cell_data, &witness_data)?;
 
-    let udt_info = UDTInfo::new(witness_data.info().xudt_script_hash().into())?;
-    let (old_total_udt, new_total_udt) =
-        super::check_input_type_proxy_lock(&witness_data, &udt_info)?;
-    let withdrawal_udt = get_output_udt(&witness_data, &udt_info)?;
+    let udt_info = UDTInfo::new(cell_data.xudt_script_hash().into())?;
+    let (old_total_udt, new_total_udt) = super::check_input_type_proxy_lock(&cell_data, &udt_info)?;
+    let withdrawal_udt = get_output_udt(&cell_data, &udt_info)?;
     if old_total_udt != new_total_udt + withdrawal_udt {
         log::error!("The extracted udt is incorrect");
         return Err(Error::AccountBook);
