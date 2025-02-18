@@ -77,11 +77,11 @@ fn get_output_udt(cell_data: &AccountBookCellData, udt_info: &UDTInfo) -> Result
         Source::Input,
     );
     let withdrawal_data = utils::load_withdrawal_data(indexs[0], Source::Input, true)?;
-    let owner_script_hash: Hash = withdrawal_data.owner_script_hash().into();
+    let xudt_lock_script_hash: Hash = withdrawal_data.xudt_lock_script_hash().into();
 
     for (udt, index) in &udt_info.outputs {
         let lock_hash = load_cell_lock_hash(*index, Source::Output)?;
-        if owner_script_hash == lock_hash {
+        if xudt_lock_script_hash == lock_hash {
             return Ok(*udt);
         }
     }

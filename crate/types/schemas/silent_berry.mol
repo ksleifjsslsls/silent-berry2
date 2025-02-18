@@ -20,8 +20,7 @@ struct DobSellingData {
     spore_data_hash: Byte32,
     buy_intent_code_hash: Byte32,
     owner_script_hash: Byte32,
-
-     spore_lock_script_hash: Byte32,
+    spore_lock_script_hash: Byte32,
 }
 
 struct WithdrawalSporeInfo {
