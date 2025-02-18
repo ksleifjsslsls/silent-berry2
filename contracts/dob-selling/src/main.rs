@@ -69,14 +69,21 @@ fn get_spore_cell_index(code_hash: Hash) -> Result<Option<usize>, Error> {
     }
 }
 
-fn check_spore_data(spore_index: usize, data_hash: Hash) -> Result<(), Error> {
+fn check_spore(spore_index: usize, witness_data: &DobSellingData) -> Result<(), Error> {
+    let data_hash: Hash = witness_data.spore_data_hash().into();
     let hash = load_cell_data_hash(spore_index, Source::Output)?;
-    if data_hash == hash {
-        Ok(())
-    } else {
+    if data_hash != hash {
         log::error!("Spore Error, SporeData does not match Hash");
-        Err(Error::CheckScript)
+        return Err(Error::CheckScript);
     }
+
+    let lock_hash: Hash = witness_data.spore_lock_script_hash().into();
+    let hash = load_cell_lock_hash(spore_index, Source::Output)?;
+    if lock_hash != hash {
+        log::error!("Spore Error, Spore Lock Script Hash does not match Hash");
+        return Err(Error::CheckScript);
+    }
+    Ok(())
 }
 
 fn check_account_book(account_book_hash: Hash) -> Result<(), Error> {
@@ -143,7 +150,7 @@ fn program_entry2() -> Result<(), Error> {
     let spore_index = get_spore_cell_index(witness_data.spore_code_hash().into())?;
 
     if let Some(spore_index) = spore_index {
-        check_spore_data(spore_index, witness_data.spore_data_hash().into())?;
+        check_spore(spore_index, &witness_data)?;
         check_account_book(witness_data.account_book_script_hash().into())?;
         check_buy_intent_code_hash(witness_data.buy_intent_code_hash().into())?;
     } else {

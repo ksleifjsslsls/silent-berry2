@@ -84,16 +84,20 @@ pub fn build_spore_input(
 pub fn build_cluster_input(
     context: &mut Context,
     cluster_data: ClusterData,
+    lock: Script,
     type_: Option<Script>,
 ) -> CellInput {
     let input_ckb = cluster_data.total_size() as u64;
-    spore_internal::build_input(
-        context,
-        input_ckb,
-        type_,
-        Bytes::copy_from_slice(cluster_data.as_slice()),
-        Default::default(),
-    )
+    let output = CellOutput::new_builder()
+        .capacity(input_ckb.pack())
+        .lock(lock)
+        .type_(ScriptOpt::new_builder().set(type_).build())
+        .build();
+    let outpoint = context.create_cell(output, Bytes::copy_from_slice(cluster_data.as_slice()));
+    CellInput::new_builder()
+        .since(Uint64::default())
+        .previous_output(outpoint)
+        .build()
 }
 
 pub fn build_agent_proxy_input(
@@ -126,6 +130,18 @@ pub fn build_normal_output_cell_with_type(
     type_: Option<Script>,
 ) -> CellOutput {
     spore_internal::build_output(context, UNIFORM_CAPACITY, type_, Default::default())
+}
+
+pub fn build_normal_output_cell(
+    _context: &mut Context,
+    lock: Script,
+    type_: Option<Script>,
+) -> CellOutput {
+    CellOutput::new_builder()
+        .capacity(UNIFORM_CAPACITY.pack())
+        .lock(lock)
+        .type_(ScriptOpt::new_builder().set(type_).build())
+        .build()
 }
 
 pub fn build_normal_output(context: &mut Context) -> CellOutput {
@@ -187,8 +203,14 @@ pub fn build_cluster_materials(
     let cluster_id = build_type_id(&normal_input, cluster_out_index);
     let cluster_type =
         build_spore_type_script(context, cluster_out_point, cluster_id.to_vec().into());
-    let cluster_input = build_cluster_input(context, cluster_data.clone(), cluster_type.clone());
-    let cluster_output = build_normal_output_cell_with_type(context, cluster_type.clone());
+    let cluster_input = build_cluster_input(
+        context,
+        cluster_data.clone(),
+        cluster_lock.clone(),
+        cluster_type.clone(),
+    );
+    let cluster_output =
+        build_normal_output_cell(context, cluster_lock.clone(), cluster_type.clone());
     let cluster_dep = build_normal_cell_dep_with_lock(
         context,
         cluster_data.as_slice(),
@@ -217,6 +239,7 @@ pub fn build_agent_materials(
     (agent_type, agent_input, agent_output, agent_dep)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_single_spore_mint_tx_with_extra_action(
     context: &mut Context,
     tx: TransactionView,
@@ -224,6 +247,7 @@ pub fn build_single_spore_mint_tx_with_extra_action(
     content_type: &str,
     input_data: Option<SporeData>,
     cluster_id: Option<[u8; 32]>,
+    spore_lock: Script,
     mut actions: Vec<(Option<Script>, SporeActionUnion)>,
 ) -> TransactionView {
     let output_data =
@@ -255,7 +279,7 @@ pub fn build_single_spore_mint_tx_with_extra_action(
         .cell_dep(spore_script_dep)
         .build();
 
-    let action = co_build::build_mint_spore_action(context, type_id, output_data.as_slice());
+    let action = co_build::build_mint_spore_action(type_id, output_data.as_slice(), spore_lock);
     actions.push((spore_type, action));
     co_build::complete_co_build_message_with_actions(tx, &actions)
 }
@@ -266,6 +290,7 @@ pub fn build_spore_mint_tx(
     content_type: &str,
     input_cell: CellInput,
     cluster_id: Option<[u8; 32]>,
+    spore_lock: Script,
 ) -> TransactionView {
     let output_data =
         build_serialized_spore_data(output_data, content_type, cluster_id.map(|v| v.to_vec()));
@@ -282,8 +307,11 @@ pub fn build_spore_mint_tx(
         .cell_dep(spore_script_dep)
         .build();
 
-    let action =
-        crate::spore::co_build::build_mint_spore_action(context, type_id, output_data.as_slice());
+    let action = crate::spore::co_build::build_mint_spore_action(
+        type_id,
+        output_data.as_slice(),
+        spore_lock,
+    );
     let actions = vec![(spore_type, action)];
     co_build::complete_co_build_message_with_actions(tx, &actions)
 }
@@ -307,6 +335,7 @@ pub fn build_single_spore_mint_in_cluster_tx(
     context: &mut Context,
     nft_data: SporeData,
     cluster_id: [u8; 32],
+    spore_lock: Script,
 ) -> TransactionView {
     let cluster_data = build_serialized_cluster_data("Spore Cluster!", "Spore Description!");
     let nft_out_point = context.deploy_cell_by_name("spore");
@@ -426,7 +455,7 @@ pub fn build_single_spore_mint_in_cluster_tx(
         .build();
 
     let cluster_transfer = co_build::build_transfer_cluster_action(context, cluster_id);
-    let nft_action = co_build::build_mint_spore_action(context, nft_id, nft_data.as_slice());
+    let nft_action = co_build::build_mint_spore_action(nft_id, nft_data.as_slice(), spore_lock);
     co_build::complete_co_build_message_with_actions(
         tx,
         &[(cluster_script, cluster_transfer), (nft_script, nft_action)],

@@ -15,11 +15,17 @@ use utils::{Hash, SmtKey};
 const DATA_ASSET_AMOUNT: u128 = 200;
 const DATA_MIN_CAPACITY: u64 = 1000;
 
-fn def_dob_selling_data(_context: &mut Context, spore_data: &SporeData) -> DobSellingData {
+fn def_spore_lock(context: &mut Context) -> Script {
+    // build_always_suc_script(context, &[4; 32])
+    build_always_suc_script(context, &[4; 32])
+}
+
+fn def_dob_selling_data(context: &mut Context, spore_data: &SporeData) -> DobSellingData {
     DobSellingData::new_builder()
         .spore_code_hash((*SporeCodeHash).pack())
         .spore_data_hash(ckb_hash(spore_data.as_slice()).pack())
         .buy_intent_code_hash((*BuyIntentCodeHash).pack())
+        .spore_lock_script_hash(def_spore_lock(context).calc_script_hash())
         .build()
 }
 fn def_buy_intent_data(context: &mut Context, dob_data: &DobSellingData) -> BuyIntentData {
@@ -372,7 +378,8 @@ fn test_simple_selling() {
         .build();
 
     // Spore
-    let tx = build_mint_spore(&mut context, tx, cluster_deps, spore_data);
+    let spore_lock = def_spore_lock(&mut context);
+    let tx = build_mint_spore(&mut context, tx, cluster_deps, spore_data, spore_lock);
 
     let tx = update_accountbook(&mut context, tx, DATA_ASSET_AMOUNT);
     let tx = context.complete_tx(tx);

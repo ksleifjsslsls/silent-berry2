@@ -455,6 +455,12 @@ impl ::core::fmt::Display for DobSellingData {
             self.buy_intent_code_hash()
         )?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
+        write!(
+            f,
+            ", {}: {}",
+            "spore_lock_script_hash",
+            self.spore_lock_script_hash()
+        )?;
         write!(f, " }}")
     }
 }
@@ -465,17 +471,18 @@ impl ::core::default::Default for DobSellingData {
     }
 }
 impl DobSellingData {
-    const DEFAULT_VALUE: [u8; 160] = [
+    const DEFAULT_VALUE: [u8; 192] = [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
-    pub const TOTAL_SIZE: usize = 160;
-    pub const FIELD_SIZES: [usize; 5] = [32, 32, 32, 32, 32];
-    pub const FIELD_COUNT: usize = 5;
+    pub const TOTAL_SIZE: usize = 192;
+    pub const FIELD_SIZES: [usize; 6] = [32, 32, 32, 32, 32, 32];
+    pub const FIELD_COUNT: usize = 6;
     pub fn account_book_script_hash(&self) -> Byte32 {
         Byte32::new_unchecked(self.0.slice(0..32))
     }
@@ -490,6 +497,9 @@ impl DobSellingData {
     }
     pub fn owner_script_hash(&self) -> Byte32 {
         Byte32::new_unchecked(self.0.slice(128..160))
+    }
+    pub fn spore_lock_script_hash(&self) -> Byte32 {
+        Byte32::new_unchecked(self.0.slice(160..192))
     }
     pub fn as_reader<'r>(&'r self) -> DobSellingDataReader<'r> {
         DobSellingDataReader::new_unchecked(self.as_slice())
@@ -523,6 +533,7 @@ impl molecule::prelude::Entity for DobSellingData {
             .spore_data_hash(self.spore_data_hash())
             .buy_intent_code_hash(self.buy_intent_code_hash())
             .owner_script_hash(self.owner_script_hash())
+            .spore_lock_script_hash(self.spore_lock_script_hash())
     }
 }
 #[derive(Clone, Copy)]
@@ -559,13 +570,19 @@ impl<'r> ::core::fmt::Display for DobSellingDataReader<'r> {
             self.buy_intent_code_hash()
         )?;
         write!(f, ", {}: {}", "owner_script_hash", self.owner_script_hash())?;
+        write!(
+            f,
+            ", {}: {}",
+            "spore_lock_script_hash",
+            self.spore_lock_script_hash()
+        )?;
         write!(f, " }}")
     }
 }
 impl<'r> DobSellingDataReader<'r> {
-    pub const TOTAL_SIZE: usize = 160;
-    pub const FIELD_SIZES: [usize; 5] = [32, 32, 32, 32, 32];
-    pub const FIELD_COUNT: usize = 5;
+    pub const TOTAL_SIZE: usize = 192;
+    pub const FIELD_SIZES: [usize; 6] = [32, 32, 32, 32, 32, 32];
+    pub const FIELD_COUNT: usize = 6;
     pub fn account_book_script_hash(&self) -> Byte32Reader<'r> {
         Byte32Reader::new_unchecked(&self.as_slice()[0..32])
     }
@@ -580,6 +597,9 @@ impl<'r> DobSellingDataReader<'r> {
     }
     pub fn owner_script_hash(&self) -> Byte32Reader<'r> {
         Byte32Reader::new_unchecked(&self.as_slice()[128..160])
+    }
+    pub fn spore_lock_script_hash(&self) -> Byte32Reader<'r> {
+        Byte32Reader::new_unchecked(&self.as_slice()[160..192])
     }
 }
 impl<'r> molecule::prelude::Reader<'r> for DobSellingDataReader<'r> {
@@ -610,11 +630,12 @@ pub struct DobSellingDataBuilder {
     pub(crate) spore_data_hash: Byte32,
     pub(crate) buy_intent_code_hash: Byte32,
     pub(crate) owner_script_hash: Byte32,
+    pub(crate) spore_lock_script_hash: Byte32,
 }
 impl DobSellingDataBuilder {
-    pub const TOTAL_SIZE: usize = 160;
-    pub const FIELD_SIZES: [usize; 5] = [32, 32, 32, 32, 32];
-    pub const FIELD_COUNT: usize = 5;
+    pub const TOTAL_SIZE: usize = 192;
+    pub const FIELD_SIZES: [usize; 6] = [32, 32, 32, 32, 32, 32];
+    pub const FIELD_COUNT: usize = 6;
     pub fn account_book_script_hash(mut self, v: Byte32) -> Self {
         self.account_book_script_hash = v;
         self
@@ -635,6 +656,10 @@ impl DobSellingDataBuilder {
         self.owner_script_hash = v;
         self
     }
+    pub fn spore_lock_script_hash(mut self, v: Byte32) -> Self {
+        self.spore_lock_script_hash = v;
+        self
+    }
 }
 impl molecule::prelude::Builder for DobSellingDataBuilder {
     type Entity = DobSellingData;
@@ -648,6 +673,7 @@ impl molecule::prelude::Builder for DobSellingDataBuilder {
         writer.write_all(self.spore_data_hash.as_slice())?;
         writer.write_all(self.buy_intent_code_hash.as_slice())?;
         writer.write_all(self.owner_script_hash.as_slice())?;
+        writer.write_all(self.spore_lock_script_hash.as_slice())?;
         Ok(())
     }
     fn build(&self) -> Self::Entity {

@@ -82,15 +82,15 @@ pub fn complete_co_build_message_with_actions(
 }
 
 pub fn build_mint_spore_action(
-    context: &mut Context,
     nft_id: [u8; 32],
     content: &[u8],
+    lock: packed::Script,
 ) -> SporeActionUnion {
-    let to = spore_internal::build_always_success_script(context, Default::default());
+    use ckb_testtool::ckb_types::prelude::*;
     let mint = MintSpore::new_builder()
         .spore_id(h256_to_byte32(nft_id))
         .data_hash(h256_to_byte32(blake2b_256(content)))
-        .to(script_to_address(to))
+        .to(script_to_address(lock))
         .build();
     SporeActionUnion::MintSpore(mint)
 }

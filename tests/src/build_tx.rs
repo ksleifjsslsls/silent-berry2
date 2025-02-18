@@ -150,7 +150,6 @@ pub fn build_buy_intent_cell(
 }
 
 pub fn build_account_book_script(context: &mut Context, type_id: Option<Hash>) -> Option<Script> {
-    println!("account book type id: {:?}", type_id);
     let type_id = type_id.unwrap_or([12u8; 32].into());
     let args: [u8; 32] = type_id.into();
 
@@ -263,6 +262,7 @@ pub fn build_mint_spore(
     tx: TransactionView,
     cluster_deps: CellDep,
     spore_data: spore_types::spore::SporeData,
+    spore_lock: Script,
 ) -> TransactionView {
     let (spore_out_point, spore_script_dep) =
         crate::spore::build_spore_contract_materials(context, "spore");
@@ -273,7 +273,9 @@ pub fn build_mint_spore(
     let spore_type =
         crate::spore::build_spore_type_script(context, &spore_out_point, type_id.to_vec().into());
     let spore_output =
-        crate::spore::build_normal_output_cell_with_type(context, spore_type.clone());
+        crate::spore::build_normal_output_cell(context, spore_lock.clone(), spore_type.clone());
+    // let spore_output =
+    //     crate::spore::build_normal_output_cell_with_type(context, spore_type.clone());
 
     let tx = tx
         .as_advanced_builder()
@@ -283,7 +285,7 @@ pub fn build_mint_spore(
         .build();
 
     let action =
-        crate::spore::co_build::build_mint_spore_action(context, type_id, spore_data.as_slice());
+        crate::spore::co_build::build_mint_spore_action(type_id, spore_data.as_slice(), spore_lock);
     let actions = vec![(spore_type, action)];
 
     let tx = crate::spore::co_build::complete_co_build_message_with_actions(tx, &actions);
