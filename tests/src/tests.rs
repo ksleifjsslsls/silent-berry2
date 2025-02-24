@@ -141,6 +141,7 @@ fn test_simple_buy_intent() {
             .witnesses(witnesses)
             .build(),
     );
+    let tx = update_deps(&mut context, tx);
     // print_tx_info(&context, &tx);
     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 }
@@ -242,6 +243,7 @@ fn test_revocation_buy_intent() {
         .build();
 
     let tx = context.complete_tx(tx);
+    let tx = update_deps(&mut context, tx);
     // print_tx_info(&context, &tx);
     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 }
@@ -383,6 +385,8 @@ fn test_simple_selling() {
 
     let tx = update_accountbook(&mut context, tx, DATA_ASSET_AMOUNT);
     let tx = context.complete_tx(tx);
+    let tx = update_deps(&mut context, tx);
+
     print_tx_info(&context, &tx);
     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 }
@@ -442,6 +446,8 @@ fn test_simple_withdrawal_intent() {
         .build();
 
     let tx = context.complete_tx(tx);
+    let tx = update_deps(&mut context, tx);
+
     // print_tx_info(&context, &tx);
     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 }
@@ -660,6 +666,8 @@ fn test_simple_withdrawal_suc() {
     };
 
     let tx = context.complete_tx(tx);
+    let tx = update_deps(&mut context, tx);
+
     // print_tx_info(&context, &tx);
     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 }
@@ -707,6 +715,8 @@ fn test_revocation_withdrawal() {
         .build();
 
     let tx = context.complete_tx(tx);
+    let tx = update_deps(&mut context, tx);
+
     // print_tx_info(&context, &tx);
     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 }
@@ -790,6 +800,7 @@ fn create_account_book() {
     // Create Account book
 
     let tx = context.complete_tx(tx);
+    let tx = update_deps(&mut context, tx);
     // print_tx_info(&context, &tx);
     verify_and_dump_failed_tx(&context, &tx, MAX_CYCLES).expect("pass");
 }

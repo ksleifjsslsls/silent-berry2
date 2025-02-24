@@ -27,14 +27,24 @@ pub const DOB_SELLING_NAME: &str = "dob-selling";
 pub const ACCOUNT_BOOK_NAME: &str = "account-book";
 pub const WITHDRAWAL_INTENT_NAME: &str = "withdrawal-intent";
 pub const INPUT_TYPE_PROXY_LOCK_NAME: &str = "input-type-proxy-lock";
+pub const CKB_JS_VM: &str = "ckb-js-vm";
 
-lazy_static::lazy_static! {
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref AccountBookTsBin: ckb_testtool::ckb_types::bytes::Bytes =
+        ckb_testtool::ckb_types::bytes::Bytes::from(
+            &include_bytes!("../../ts/account_book/dist/index.bc")[..]
+        );
+}
+lazy_static! {
     static ref BuyIntentCodeHash: [u8; 32] = get_code_hash(BUY_INTENT_NAME);
     static ref DOBSellingCodeHash: [u8; 32] = get_code_hash(DOB_SELLING_NAME);
     static ref AccountBookCodeHash: [u8; 32] = get_code_hash(ACCOUNT_BOOK_NAME);
     static ref WithdrawalIntentCodeHash: [u8; 32] = get_code_hash(WITHDRAWAL_INTENT_NAME);
     static ref InputTypeProxyLockCodeHash: [u8; 32] = get_code_hash(INPUT_TYPE_PROXY_LOCK_NAME);
     static ref SporeCodeHash: [u8; 32] = get_code_hash(SPORE_NAME);
+    static ref CkbJsVmCodeHash: [u8; 32] = get_code_hash(CKB_JS_VM);
 }
 
 fn get_code_hash(n: &str) -> [u8; 32] {
@@ -127,10 +137,12 @@ pub fn print_tx_info(context: &Context, tx: &TransactionView) {
 
         if hash_type != "type" {
             let n = bins.get(&code_hash);
-            script.as_object_mut().unwrap().insert(
-                "name".to_string(),
-                serde_json::to_value(n.unwrap()).unwrap(),
-            );
+            if script.as_object().is_some() && n.is_some() {
+                script.as_object_mut().unwrap().insert(
+                    "name".to_string(),
+                    serde_json::to_value(n.unwrap()).unwrap(),
+                );
+            }
         }
     }
 

@@ -59,6 +59,9 @@ build:
 		cargo build -p $(CONTRACT)-sim; \
 	fi;
 
+build_js:
+	cd ts/account_book && pnpm run build
+
 build-deps:
 	cd deps && rm -rf ckb-production-scripts ckb-proxy-locks spore-contract
 	cd deps && \
@@ -77,6 +80,11 @@ build-deps:
 		cd ckb-proxy-locks && \
 		git submodule update --init --recursive && \
 		./scripts/reproducible_build_docker -u
+	cd deps && \
+		git clone https://github.com/nervosnetwork/ckb-js-vm.git && \
+		cd ckb-js-vm && \
+		git submodule update --init --recursive && \
+		make all
 	cp deps/spore-contract/build/release/cluster ./build/3rd-bin/
 	cp deps/spore-contract/build/release/cluster_agent ./build/3rd-bin/
 	cp deps/spore-contract/build/release/cluster_proxy ./build/3rd-bin/
@@ -86,6 +94,7 @@ build-deps:
 	cp deps/ckb-production-scripts/build/xudt_rce ./build/3rd-bin/
 	cp deps/ckb-production-scripts/build/always_success ./build/3rd-bin/
 	cp deps/ckb-proxy-locks/build/release/input-type-proxy-lock ./build/3rd-bin
+	cp deps/ckb-js-vm/build/ckb-js-vm ./build/3rd-bin
 
 # Run a single make task for a specific contract. For example:
 #
@@ -98,6 +107,9 @@ run:
 # there is nothing wrong invoking cargo directly instead of make.
 test: build
 	cargo test $(CARGO_ARGS)
+
+test-js: build
+	cargo test --features="js"
 
 check:
 	cargo check $(CARGO_ARGS)

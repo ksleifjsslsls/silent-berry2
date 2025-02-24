@@ -149,16 +149,59 @@ pub fn build_buy_intent_cell(
         .build()
 }
 
+use std::thread_local;
+#[cfg(not(feature = "js"))]
+thread_local! {
+static  G_USING_JS: std::cell::RefCell<bool> = const { std::cell::RefCell::new(false) }
+}
+#[cfg(feature = "js")]
+thread_local! {
+static  G_USING_JS: std::cell::RefCell<bool> = const { std::cell::RefCell::new(true) }
+}
+
+pub fn using_js() -> bool {
+    G_USING_JS.with_borrow(|f| *f)
+}
+pub fn set_using_js(b: bool) {
+    G_USING_JS.with_borrow_mut(|f| *f = b);
+}
+
 pub fn build_account_book_script(context: &mut Context, type_id: Option<Hash>) -> Option<Script> {
     let type_id = type_id.unwrap_or([12u8; 32].into());
     let args: [u8; 32] = type_id.into();
 
-    let out_point = context.deploy_cell_by_name(ACCOUNT_BOOK_NAME);
-    Some(
-        context
-            .build_script_with_hash_type(&out_point, ScriptHashType::Data2, args.to_vec().into())
-            .expect("build xudt"),
-    )
+    if using_js() {
+        let out_point = context.deploy_cell_by_name(CKB_JS_VM);
+        let js_code_hash = ckb_hash(&AccountBookTsBin);
+
+        let args = [
+            [0u8; 2].as_slice(),
+            &js_code_hash,
+            &[ScriptHashType::Data2 as u8],
+            &args,
+        ]
+        .concat();
+        Some(
+            context
+                .build_script_with_hash_type(
+                    &out_point,
+                    ScriptHashType::Data2,
+                    args.to_vec().into(),
+                )
+                .expect("build xudt"),
+        )
+    } else {
+        let out_point = context.deploy_cell_by_name(ACCOUNT_BOOK_NAME);
+        Some(
+            context
+                .build_script_with_hash_type(
+                    &out_point,
+                    ScriptHashType::Data2,
+                    args.to_vec().into(),
+                )
+                .expect("build xudt"),
+        )
+    }
 }
 
 pub fn build_account_book(
@@ -364,7 +407,11 @@ pub fn update_accountbook(
             if let Some((output, _)) = context.get_cell(&f.previous_output()) {
                 if let Some(type_script) = output.type_().to_opt() {
                     let type_script_code_hash: Hash = type_script.code_hash().into();
-                    type_script_code_hash == *AccountBookCodeHash
+                    if using_js() {
+                        type_script_code_hash == *CkbJsVmCodeHash
+                    } else {
+                        type_script_code_hash == *AccountBookCodeHash
+                    }
                 } else {
                     false
                 }
@@ -473,4 +520,31 @@ pub fn build_withdrawal_intent_script(
             )
             .expect("WITHDRAWAL_INTENT_NAME"),
     )
+}
+
+pub fn update_deps(context: &mut Context, tx: TransactionView) -> TransactionView {
+    if using_js() {
+        let out_point = OutPoint::new_builder()
+            .tx_hash(ckb_testtool::context::random_hash())
+            .build();
+        let bin = crate::AccountBookTsBin.clone();
+        let cell = {
+            let cell = CellOutput::new_builder()
+                .lock(build_always_suc_script(context, Default::default()))
+                .build();
+            let occupied_capacity = cell
+                .occupied_capacity(
+                    ckb_testtool::ckb_types::core::Capacity::bytes(bin.len())
+                        .expect("data occupied capacity"),
+                )
+                .expect("cell capacity");
+            cell.as_builder().capacity(occupied_capacity.pack()).build()
+        };
+        context.cells.insert(out_point.clone(), (cell, bin));
+        // AccountBookTsBin
+        let cell_dep = CellDep::new_builder().out_point(out_point.clone()).build();
+        tx.as_advanced_builder().cell_dep(cell_dep).build()
+    } else {
+        tx
+    }
 }
