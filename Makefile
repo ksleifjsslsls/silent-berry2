@@ -59,7 +59,7 @@ build:
 		cargo build -p $(CONTRACT)-sim; \
 	fi;
 
-build_js:
+build-js:
 	cd ts/account_book && pnpm run build
 
 build-deps:
@@ -177,6 +177,8 @@ prepare:
 mol:
 	moleculec --language rust --schema-file crate/types/schemas/silent_berry.mol > crate/types/src/silent_berry.rs
 	cargo fmt -- crate/types/src/silent_berry.rs
+	moleculec --language - --schema-file crate/types/schemas/silent_berry.mol --format json > crate/types/src/silent_berry.json
+	moleculec-es -inputFile crate/types/src/silent_berry.json -outputFile ts/silent_berry.js
 
 spore-mol:
 	moleculec --language rust --schema-file crate/spore-types/schemas/cobuild/basic.mol > crate/spore-types/src/cobuild/basic.rs
