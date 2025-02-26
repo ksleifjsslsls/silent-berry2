@@ -16,7 +16,7 @@ pub mod spore;
 #[cfg(test)]
 mod tests;
 
-pub const MAX_CYCLES: u64 = 10_000_000;
+pub const MAX_CYCLES: u64 = 10_000_000_000;
 
 pub const ALWAYS_SUC_NAME: &str = "always_success";
 pub const XUDT_NAME: &str = "xudt_rce";
@@ -96,9 +96,15 @@ pub fn print_tx_info(context: &Context, tx: &TransactionView) {
             let hash = ckb_hash(&hex::decode(&f_data.as_str().unwrap()[2..]).unwrap());
 
             let name = bins.get(&hash);
-            if name.is_some() {
-                *f_data = serde_json::to_value(format!("-- {} --", &name.unwrap())).unwrap();
-            }
+            *f_data = serde_json::to_value(format!(
+                "-- {} --",
+                if name.is_some() {
+                    &name.unwrap()
+                } else {
+                    "-- unknow --"
+                }
+            ))
+            .unwrap();
             true
         });
 
@@ -137,10 +143,14 @@ pub fn print_tx_info(context: &Context, tx: &TransactionView) {
 
         if hash_type != "type" {
             let n = bins.get(&code_hash);
-            if script.as_object().is_some() && n.is_some() {
+            if script.as_object().is_some() {
                 script.as_object_mut().unwrap().insert(
                     "name".to_string(),
-                    serde_json::to_value(n.unwrap()).unwrap(),
+                    if let Some(n) = n {
+                        serde_json::to_value(n).unwrap()
+                    } else {
+                        "unknow".into()
+                    },
                 );
             }
         }
