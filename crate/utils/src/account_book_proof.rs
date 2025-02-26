@@ -3,14 +3,39 @@ extern crate alloc;
 use crate::Hash;
 use alloc::vec::Vec;
 pub use sparse_merkle_tree::traits::Value;
-pub use sparse_merkle_tree::{blake2b::Blake2bHasher, CompiledMerkleProof, H256};
+pub use sparse_merkle_tree::{CompiledMerkleProof, H256};
 use types::error::SilentBerryError as Error;
 
 #[cfg(feature = "std")]
 use sparse_merkle_tree::{default_store::DefaultStore, SparseMerkleTree};
 
+pub struct SmtHasher(blake2b_ref::Blake2b);
+
+impl Default for SmtHasher {
+    fn default() -> Self {
+        let blake2b = blake2b_ref::Blake2bBuilder::new(crate::hash::HASH_SIZE)
+            .personal(crate::hash::CKB_HASH_PERSONALIZATION)
+            .build();
+        Self(blake2b)
+    }
+}
+
+impl sparse_merkle_tree::traits::Hasher for SmtHasher {
+    fn write_h256(&mut self, h: &H256) {
+        self.0.update(h.as_slice());
+    }
+    fn write_byte(&mut self, b: u8) {
+        self.0.update(&[b][..]);
+    }
+    fn finish(self) -> H256 {
+        let mut hash = [0u8; 32];
+        self.0.finalize(&mut hash);
+        hash.into()
+    }
+}
+
 #[cfg(feature = "std")]
-pub type SMTTree = SparseMerkleTree<Blake2bHasher, SmtValue, DefaultStore<SmtValue>>;
+pub type SMTTree = SparseMerkleTree<SmtHasher, SmtValue, DefaultStore<SmtValue>>;
 
 #[derive(Clone)]
 pub enum SmtKey {
@@ -80,7 +105,7 @@ impl AccountBookProof {
         let proof = CompiledMerkleProof(self.proof.clone());
 
         proof
-            .verify::<Blake2bHasher>(
+            .verify::<SmtHasher>(
                 &root.into(),
                 vec![
                     (
@@ -109,6 +134,6 @@ impl AccountBookProof {
 }
 
 pub const SMT_ROOT_HASH_INITIAL: [u8; 32] = [
-    0x0b, 0x4c, 0x8b, 0xd4, 0xf8, 0x27, 0xd2, 0xd9, 0xf0, 0x4e, 0xb9, 0x26, 0xe2, 0x89, 0xdb, 0x7a,
-    0x62, 0xb7, 0x86, 0x40, 0x38, 0x99, 0x94, 0xde, 0xd5, 0x82, 0xd7, 0x5f, 0xa6, 0x33, 0xd6, 0xb0,
+    0x00, 0x06, 0xc4, 0x85, 0x4a, 0x56, 0x99, 0x02, 0xd8, 0x76, 0x0c, 0x07, 0xd5, 0x42, 0x6e, 0x5f,
+    0x20, 0xa0, 0xc0, 0x4c, 0x9b, 0x51, 0x16, 0xa1, 0xdb, 0x45, 0x35, 0x62, 0x5e, 0x26, 0xe7, 0x4e,
 ];
