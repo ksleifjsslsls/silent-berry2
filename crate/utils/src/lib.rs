@@ -158,7 +158,7 @@ pub fn load_account_book_data(index: usize, source: Source) -> Result<AccountBoo
     Ok(AccountBookData::new_unchecked(witness))
 }
 
-pub fn load_account_bool_cell_data(
+pub fn load_account_book_cell_data(
     index: usize,
     source: Source,
 ) -> Result<AccountBookCellData, Error> {

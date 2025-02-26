@@ -73,8 +73,8 @@ fn verify_cell_data(old: &AccountBookCellData, new: &AccountBookCellData) -> Res
     Ok(())
 }
 fn load_verified_cell_data() -> Result<(AccountBookCellData, Hash, bool), Error> {
-    let old_data = utils::load_account_bool_cell_data(0, Source::GroupInput)?;
-    let new_data = utils::load_account_bool_cell_data(0, Source::GroupOutput)?;
+    let old_data = utils::load_account_book_cell_data(0, Source::GroupInput)?;
+    let new_data = utils::load_account_book_cell_data(0, Source::GroupOutput)?;
     verify_cell_data(&old_data, &new_data)?;
 
     let old_buyer_count: u32 = old_data.buyer_count().unpack();

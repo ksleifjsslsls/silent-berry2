@@ -106,7 +106,7 @@ fn check_cell_data(
 pub fn creation(witness_data: AccountBookData) -> Result<(), Error> {
     // Input cells: 1
     // CKB
-    let cell_data = utils::load_account_bool_cell_data(0, Source::GroupOutput)?;
+    let cell_data = utils::load_account_book_cell_data(0, Source::GroupOutput)?;
 
     // Output Cells: 2~3
     // input-type-proxy-lock + xUDT
