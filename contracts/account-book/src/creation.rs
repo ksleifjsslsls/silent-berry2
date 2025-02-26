@@ -13,7 +13,8 @@ fn check_xudt_cell(cell_data: &AccountBookCellData) -> Result<(), Error> {
     let proxy_lock = load_cell_lock(0, Source::Output)?;
     let proxy_lock_code_hash: Hash = proxy_lock.code_hash().into();
 
-    if proxy_lock_code_hash != (cell_data.input_type_proxy_lock_code_hash()) {
+    let cell_info = cell_data.info();
+    if proxy_lock_code_hash != (cell_info.input_type_proxy_lock_code_hash()) {
         log::error!("input_type_proxy_lock code hash verification failed");
         return Err(Error::TxStructure);
     }
@@ -30,7 +31,7 @@ fn check_xudt_cell(cell_data: &AccountBookCellData) -> Result<(), Error> {
             Error::TxStructure
         })?
         .into();
-    if xudt_script_hash != cell_data.xudt_script_hash() {
+    if xudt_script_hash != cell_info.xudt_script_hash() {
         log::error!("xudt script hash verification failed");
         return Err(Error::TxStructure);
     }
@@ -69,7 +70,7 @@ fn check_cell_data(
     witness_data: &AccountBookData,
     cell_data: &AccountBookCellData,
 ) -> Result<(), Error> {
-    let level: u8 = cell_data.level().into();
+    let level: u8 = cell_data.info().level().into();
     let _ratios = crate::get_ratios(cell_data, level)?;
 
     if cell_data.profit_distribution_number().raw_data().len() != level as usize {

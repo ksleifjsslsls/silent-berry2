@@ -38,6 +38,7 @@ pub fn selling(
     old_smt_hash: Hash,
 ) -> Result<(), Error> {
     let (spore_data, spore_id) = load_spore(Source::Output)?;
+    let cell_info = cell_data.info();
 
     // Check cluster id
     if spore_data
@@ -48,13 +49,13 @@ pub fn selling(
             Error::Spore
         })?
         .raw_data()
-        != cell_data.cluster_id().as_slice()
+        != cell_info.cluster_id().as_slice()
     {
         log::error!("The cluster id does not match");
         return Err(Error::VerifiedData);
     }
     // Check spore level
-    let level_by_witness: u8 = cell_data.level().into();
+    let level_by_witness: u8 = cell_info.level().into();
     let level_by_spore = utils::get_spore_level(&spore_data)?;
     if level_by_witness != level_by_spore {
         log::error!(
@@ -66,9 +67,9 @@ pub fn selling(
     }
 
     // Check price
-    let price: u128 = cell_data.price().unpack();
+    let price: u128 = cell_info.price().unpack();
     let (old_amount, new_amount) = {
-        let udt_info = utils::UDTInfo::new(cell_data.xudt_script_hash().into())?;
+        let udt_info = utils::UDTInfo::new(cell_info.xudt_script_hash().into())?;
         let (old, new) = super::check_input_type_proxy_lock(&cell_data, &udt_info)?;
 
         if old + price != new {

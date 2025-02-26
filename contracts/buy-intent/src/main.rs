@@ -120,6 +120,7 @@ fn check_account_book(account_book_hash: Hash, price: u128) -> Result<(), Error>
 
     let accountbook_asset_amount: u128 =
         AccountBookCellData::new_unchecked(load_cell_data(pos.unwrap(), Source::Output)?.into())
+            .info()
             .price()
             .unpack();
 

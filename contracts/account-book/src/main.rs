@@ -97,7 +97,7 @@ fn load_verified_cell_data() -> Result<(AccountBookCellData, Hash, bool), Error>
 }
 
 fn is_selling(new_cell_data: &AccountBookCellData) -> Result<bool, Error> {
-    let dob_selling_code_hash: Hash = new_cell_data.dob_selling_code_hash().into();
+    let dob_selling_code_hash: Hash = new_cell_data.info().dob_selling_code_hash().into();
     if !get_indexs(
         load_lock_code_hash,
         |h| dob_selling_code_hash == h,
@@ -107,7 +107,7 @@ fn is_selling(new_cell_data: &AccountBookCellData) -> Result<bool, Error> {
     {
         Ok(true)
     } else {
-        let withdrawal_code_hash: Hash = new_cell_data.withdrawal_intent_code_hash().into();
+        let withdrawal_code_hash: Hash = new_cell_data.info().withdrawal_intent_code_hash().into();
         if !get_indexs(
             load_type_code_hash,
             |h| withdrawal_code_hash == h,
@@ -133,7 +133,7 @@ fn check_input_type_proxy_lock(
         })?
         .into();
 
-    let proxy_lock_code_hash: Hash = cell_data.input_type_proxy_lock_code_hash().into();
+    let proxy_lock_code_hash: Hash = cell_data.info().input_type_proxy_lock_code_hash().into();
     let indexs = get_indexs(
         load_lock_code_hash,
         |h| proxy_lock_code_hash == h,

@@ -52,11 +52,7 @@ table AccountBookData {
     withdrawn_udt: Uint128Opt,  # Used when withdrawing
 }
 
-# Cell Data
-table AccountBookCellData {
-    smt_root_hash: Byte32,
-    buyer_count: Uint32,
-
+struct AccountBookCellInfo {
     dob_selling_code_hash: Byte32,
     buy_intent_code_hash: Byte32,
     withdrawal_intent_code_hash: Byte32,
@@ -68,7 +64,14 @@ table AccountBookCellData {
     auther_id: Byte32,
     platform_id: Byte32,
     price: Uint128,
+}
 
+# Cell Data
+table AccountBookCellData {
+    smt_root_hash: Byte32,
+    buyer_count: Uint32,
+
+    info: AccountBookCellInfo,
     profit_distribution_ratio: Bytes,
     profit_distribution_number: Bytes,
 }

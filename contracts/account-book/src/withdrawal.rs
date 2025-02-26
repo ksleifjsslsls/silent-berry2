@@ -15,10 +15,11 @@ fn get_total_withdrawn(
     cell_data: &AccountBookCellData,
     witness_data: &AccountBookData,
 ) -> Result<(u128, SmtKey), Error> {
-    let account_book_level: u8 = cell_data.level().into();
+    let cell_info = cell_data.info();
+    let account_book_level: u8 = cell_info.level().into();
     let ratios = crate::get_ratios(cell_data, account_book_level)?;
 
-    let buyer = get_buyer(cell_data.withdrawal_intent_code_hash().into())?;
+    let buyer = get_buyer(cell_info.withdrawal_intent_code_hash().into())?;
 
     let (ratio, num, smt_key) = match buyer.to_enum() {
         WithdrawalBuyerUnion::WithdrawalSporeInfo(spore_info) => {
@@ -54,9 +55,9 @@ fn get_total_withdrawn(
         }
         WithdrawalBuyerUnion::Byte32(script_hash) => {
             let script_hash: Hash = script_hash.into();
-            if script_hash == cell_data.auther_id() {
+            if script_hash == cell_info.auther_id() {
                 (ratios[1] as usize, 1usize, SmtKey::Auther)
-            } else if script_hash == cell_data.platform_id() {
+            } else if script_hash == cell_info.platform_id() {
                 (ratios[0] as usize, 1usize, SmtKey::Platform)
             } else {
                 log::error!("Unknow WithdrawalBuyer: {:02x?}", script_hash.as_slice());
@@ -70,7 +71,7 @@ fn get_total_withdrawn(
 }
 
 fn get_output_udt(cell_data: &AccountBookCellData, udt_info: &UDTInfo) -> Result<u128, Error> {
-    let withdrawal_intent_code_hash: Hash = cell_data.withdrawal_intent_code_hash().into();
+    let withdrawal_intent_code_hash: Hash = cell_data.info().withdrawal_intent_code_hash().into();
     let indexs = get_indexs(
         load_type_code_hash,
         |h| withdrawal_intent_code_hash == h,
@@ -97,7 +98,7 @@ pub fn withdrawal(
 ) -> Result<(), Error> {
     let (new_total_withdrawn, smt_key) = get_total_withdrawn(&cell_data, &witness_data)?;
 
-    let udt_info = UDTInfo::new(cell_data.xudt_script_hash().into())?;
+    let udt_info = UDTInfo::new(cell_data.info().xudt_script_hash().into())?;
     let (old_total_udt, new_total_udt) = super::check_input_type_proxy_lock(&cell_data, &udt_info)?;
     let withdrawal_udt = get_output_udt(&cell_data, &udt_info)?;
     if old_total_udt != new_total_udt + withdrawal_udt {

@@ -7,8 +7,8 @@ use ckb_testtool::ckb_types::{
 };
 use spore_types::spore::SporeData;
 use types::{
-    blockchain::OutPoint, AccountBookCellData, AccountBookData, BuyIntentData, DobSellingData,
-    Uint128Opt, WithdrawalBuyer, WithdrawalIntentData, WithdrawalSporeInfo,
+    blockchain::OutPoint, AccountBookCellData, AccountBookCellInfo, AccountBookData, BuyIntentData,
+    DobSellingData, Uint128Opt, WithdrawalBuyer, WithdrawalIntentData, WithdrawalSporeInfo,
 };
 use utils::{Hash, SmtKey};
 
@@ -49,15 +49,19 @@ fn def_withdrawal_intent_data(context: &mut Context) -> WithdrawalIntentData {
 }
 fn def_account_book_cell_data(context: &mut Context) -> AccountBookCellData {
     AccountBookCellData::new_builder()
-        .dob_selling_code_hash((*DOBSellingCodeHash).pack())
-        .buy_intent_code_hash((*BuyIntentCodeHash).pack())
-        .withdrawal_intent_code_hash((*WithdrawalIntentCodeHash).pack())
-        .xudt_script_hash(get_opt_script_hash(&build_xudt_script(context)).pack())
-        .input_type_proxy_lock_code_hash((*InputTypeProxyLockCodeHash).pack())
-        .cluster_id([3u8; 32].pack())
-        .auther_id([1u8; 32].pack())
-        .platform_id([2u8; 32].pack())
-        .price(DATA_ASSET_AMOUNT.pack())
+        .info(
+            AccountBookCellInfo::new_builder()
+                .dob_selling_code_hash((*DOBSellingCodeHash).pack())
+                .buy_intent_code_hash((*BuyIntentCodeHash).pack())
+                .withdrawal_intent_code_hash((*WithdrawalIntentCodeHash).pack())
+                .xudt_script_hash(get_opt_script_hash(&build_xudt_script(context)).pack())
+                .input_type_proxy_lock_code_hash((*InputTypeProxyLockCodeHash).pack())
+                .cluster_id([3u8; 32].pack())
+                .auther_id([1u8; 32].pack())
+                .platform_id([2u8; 32].pack())
+                .price(DATA_ASSET_AMOUNT.pack())
+                .build(),
+        )
         .profit_distribution_ratio([10, 20, 30, 40].pack())
         .profit_distribution_number([7, 15].pack())
         .build()
@@ -267,11 +271,18 @@ fn test_simple_selling() {
     let account_book_data = AccountBookData::new_builder()
         // .proof(smt_proof.pack())
         .build();
-    let ab_cell_data = def_account_book_cell_data(&mut context)
+    let ab_cell_data = def_account_book_cell_data(&mut context);
+    let ab_cell_info = ab_cell_data.info();
+    let ab_cell_data = ab_cell_data
         .as_builder()
         // .smt_root_hash(old_smt_hash.into())
-        .level(2.into())
-        .cluster_id(get_cluster_id(&spore_data).pack())
+        .info(
+            ab_cell_info
+                .as_builder()
+                .level(2.into())
+                .cluster_id(get_cluster_id(&spore_data).pack())
+                .build(),
+        )
         .buyer_count(15u32.pack())
         .build();
     let ab_cell_data_new = ab_cell_data
@@ -494,10 +505,17 @@ fn test_simple_withdrawal_suc() {
     let new_hash = smt.root_hash();
 
     // Account Book
-    let account_book_cell_data = def_account_book_cell_data(&mut context)
+    let account_book_cell_data = def_account_book_cell_data(&mut context);
+    let account_book_cell_info = account_book_cell_data.info();
+    let account_book_cell_data = account_book_cell_data
         .as_builder()
-        .level(2.into())
-        .cluster_id(cluster_id.clone().into())
+        .info(
+            account_book_cell_info
+                .as_builder()
+                .level(2.into())
+                .cluster_id(cluster_id.clone().into())
+                .build(),
+        )
         .profit_distribution_ratio(ratios.pack())
         .profit_distribution_number(buyers.pack())
         .smt_root_hash(old_hash.into())
@@ -736,9 +754,16 @@ fn create_account_book() {
     let account_book_data = AccountBookData::new_builder()
         .proof(smt.proof(SmtKey::Auther).pack())
         .build();
-    let account_book_cell_data = def_account_book_cell_data(&mut context)
+    let account_book_cell_data = def_account_book_cell_data(&mut context);
+    let account_book_cell_info = account_book_cell_data.info();
+    let account_book_cell_data = account_book_cell_data
         .as_builder()
-        .level(5u8.into())
+        .info(
+            account_book_cell_info
+                .as_builder()
+                .level(5u8.into())
+                .build(),
+        )
         .buyer_count(0u32.pack())
         .profit_distribution_ratio([20, 20, 20, 10, 10, 10, 10].pack())
         .profit_distribution_number([10, 20, 30, 40, 50].pack())
