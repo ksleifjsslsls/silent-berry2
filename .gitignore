@@ -4,4 +4,4 @@
 node_modules/
 node_modules/
 dist/
-crate/types/src/silent_berry.json
+crate/**/*.json
