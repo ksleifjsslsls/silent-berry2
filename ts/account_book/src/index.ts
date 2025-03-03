@@ -1,20 +1,21 @@
+import * as utils from "./utils"
+
 import * as bindings from "@ckb-js-std/bindings";
 import { bigintFromBytes, HighLevel, log } from "@ckb-js-std/core";
-import { AccountBookData, AccountBookCellData } from "../../silent_berry"
+import { AccountBookData, AccountBookCellData } from "../../types/silent_berry"
 
 import { creation } from "./creation"
 import { selling } from "./selling"
 import { withdrawal } from "./withdrawal"
-import * as utils from "./utils"
 
 log.setLevel(log.LogLevel.Debug);
 
-function load_account_book_data(index: number, source: bindings.SourceType) {
+function loadAccountBookData(index: number, source: bindings.SourceType) {
     let witness = HighLevel.loadWitnessArgs(index, source).outputType;
     return new AccountBookData(witness);
 }
 
-function is_creation() {
+function isCreation() {
     HighLevel.loadCellTypeHash(0, bindings.SOURCE_GROUP_OUTPUT);
 
     try {
@@ -29,7 +30,7 @@ function is_creation() {
     return false;
 }
 
-function the_only(source: bindings.SourceType) {
+function theOnly(source: bindings.SourceType) {
     try {
         HighLevel.loadCellTypeHash(1, source);
     }
@@ -43,34 +44,34 @@ function the_only(source: bindings.SourceType) {
     throw `Multiple AccountBook found in ${source}`
 }
 
-function verify_cell_data(o: AccountBookCellData, n: AccountBookCellData) {
-    let o_info = o.getInfo();
-    let n_info = n.getInfo();
+function verifyCellData(o: AccountBookCellData, n: AccountBookCellData) {
+    let oInfo = o.getInfo();
+    let nInfo = n.getInfo();
 
-    if (!utils.eq_buf(o_info.view.buffer, n_info.view.buffer)) {
+    if (!utils.eqBuf(oInfo.view.buffer, nInfo.view.buffer)) {
         throw "Modification of CellData is not allowed (AccountBookCellInfo)"
     }
 
-    let o_n = o.getProfitDistributionNumber().raw();
-    let n_n = n.getProfitDistributionNumber().raw();
-    if (!utils.eq_buf(o_n, n_n)) {
+    let oldNum = o.getProfitDistributionNumber().raw();
+    let newNum = n.getProfitDistributionNumber().raw();
+    if (!utils.eqBuf(oldNum, newNum)) {
         throw "Modification of CellData is not allowed (ProfitDistributionNumber)"
     }
 
-    let o_r = o.getProfitDistributionRatio().raw();
-    let n_r = n.getProfitDistributionRatio().raw();
-    if (!utils.eq_buf(o_r, n_r)) {
+    let oldRatio = o.getProfitDistributionRatio().raw();
+    let newRatio = n.getProfitDistributionRatio().raw();
+    if (!utils.eqBuf(oldRatio, newRatio)) {
         throw "Modification of CellData is not allowed (ProfitDistributionRatio)"
     }
 }
 
-function is_selling(new_cell_data: AccountBookCellData) {
-    let dob_selling_code_hash = new_cell_data.getInfo().getDobSellingCodeHash().raw();
+function isSelling(newCellData: AccountBookCellData) {
+    let dobSellingCodeHash = newCellData.getInfo().getDobSellingCodeHash().raw();
 
     let count = 0;
     let iters = (new HighLevel.QueryIter(HighLevel.loadCellLock, bindings.SOURCE_INPUT));
     for (let it of iters) {
-        if (utils.eq_buf(it.codeHash, dob_selling_code_hash)) {
+        if (utils.eqBuf(it.codeHash, dobSellingCodeHash)) {
             count += 1;
             break;
         }
@@ -80,10 +81,11 @@ function is_selling(new_cell_data: AccountBookCellData) {
     }
 
     count = 0;
-    let withdrawal_code_hash = new_cell_data.getInfo().getWithdrawalIntentCodeHash().raw();
-    iters = (new HighLevel.QueryIter(HighLevel.loadCellLock, bindings.SOURCE_INPUT));
-    for (let it of iters) {
-        if (utils.eq_buf(it.codeHash, withdrawal_code_hash)) {
+    let withdrawalCodeHash = newCellData.getInfo().getWithdrawalIntentCodeHash().raw();
+    let iters2 = (new HighLevel.QueryIter(HighLevel.loadCellType, bindings.SOURCE_INPUT));
+    for (let it of iters2) {
+        if (it == null) continue;
+        if (utils.eqBuf(it.codeHash, withdrawalCodeHash)) {
             count += 1;
             break;
         }
@@ -95,25 +97,25 @@ function is_selling(new_cell_data: AccountBookCellData) {
     }
 }
 
-function load_verified_cell_data() {
-    let old_data = utils.load_account_book_cell_data(0, bindings.SOURCE_GROUP_INPUT);
-    let new_data = utils.load_account_book_cell_data(0, bindings.SOURCE_GROUP_OUTPUT);
+function loadVerifiedCellData() {
+    let oldData = utils.loadAccountBookCellData(0, bindings.SOURCE_GROUP_INPUT);
+    let newData = utils.loadAccountBookCellData(0, bindings.SOURCE_GROUP_OUTPUT);
 
-    verify_cell_data(old_data, new_data);
+    verifyCellData(oldData, newData);
 
-    let old_buyer_count = old_data.getBuyerCount().toLittleEndianUint32();
-    let new_buyer_count = new_data.getBuyerCount().toLittleEndianUint32();
+    let oldBuyerCount = oldData.getBuyerCount().toLittleEndianUint32();
+    let newBuyerCount = newData.getBuyerCount().toLittleEndianUint32();
 
-    let b_is_selling = is_selling(new_data);
-    if (b_is_selling && old_buyer_count + 1 != new_buyer_count) {
-        throw `CellData buyer count incorrect: ${old_buyer_count}, ${new_buyer_count}, is_selling: ${b_is_selling}`;
-    } else if (!is_selling && old_buyer_count != new_buyer_count) {
-        throw `Withdrawal does not allow update buyer_count`;
+    const s = isSelling(newData);
+    if (s && oldBuyerCount + 1 != newBuyerCount) {
+        throw `CellData buyer count incorrect: ${oldBuyerCount}, ${newBuyerCount}, isSelling: ${s}`;
+    } else if (!s && oldBuyerCount != newBuyerCount) {
+        throw `Withdrawal does not allow update BuyerCount`;
     }
     return {
-        data: new_data,
-        old_smt: old_data.getSmtRootHash().raw(),
-        b_is_selling: b_is_selling,
+        data: newData,
+        oldSmt: oldData.getSmtRootHash().raw(),
+        isSelling: s,
     }
 }
 
@@ -121,18 +123,18 @@ function main() {
     log.debug("Begin TS AccountBook");
     HighLevel.checkTypeId(35);
 
-    let witness_data = load_account_book_data(0, bindings.SOURCE_GROUP_OUTPUT);
-    if (is_creation()) {
-        return creation(witness_data);
+    let witnessData = loadAccountBookData(0, bindings.SOURCE_GROUP_OUTPUT);
+    if (isCreation()) {
+        return creation(witnessData);
     } else {
-        the_only(bindings.SOURCE_GROUP_INPUT);
-        the_only(bindings.SOURCE_GROUP_OUTPUT);
+        theOnly(bindings.SOURCE_GROUP_INPUT);
+        theOnly(bindings.SOURCE_GROUP_OUTPUT);
 
-        let ret = load_verified_cell_data();
-        if (ret.b_is_selling) {
-            selling(witness_data, ret.data, ret.old_smt)
+        let ret = loadVerifiedCellData();
+        if (ret.isSelling) {
+            selling(witnessData, ret.data, ret.oldSmt);
         } else {
-            withdrawal(witness_data, ret.data, ret.old_smt)
+            withdrawal(witnessData, ret.data, ret.oldSmt);
         }
     }
 

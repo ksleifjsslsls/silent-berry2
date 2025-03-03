@@ -1,134 +1,109 @@
+// TODO mol CCC
+
 import * as bindings from "@ckb-js-std/bindings";
 import { bigintFromBytes, HighLevel, log } from "@ckb-js-std/core";
-import { AccountBookData, AccountBookCellData } from "../../silent_berry"
-import { SporeData } from "../../spore_v1"
+import { AccountBookData, AccountBookCellData, DobSellingData } from "../../types/silent_berry"
+import { SporeData } from "../../types/spore_v1"
 
-function load_spore(source: bindings.SourceType, cell_data: AccountBookCellData) {
-    let cell_info = cell_data.getInfo();
+import * as utils from "./utils"
+
+function loadSpore(source: bindings.SourceType, cell_data: AccountBookCellData): [SporeData, ArrayBuffer] {
+    let cellInfo = cell_data.getInfo();
+    let dobSellingCodeHash = cellInfo.getDobSellingCodeHash().raw();
+
+    let sporeCodeHash: any, sporeDataHash: any;
     {
-        let dob_selling_code_hash = cell_info.getDobSellingCodeHash().raw();
-        for (let it of new HighLevel.QueryIter(HighLevel.loadCellLock, bindings.SOURCE_INPUT)) {
-            if (it.codeHash == dob_selling_code_hash) {
-
+        let iters = new HighLevel.QueryIter((index: number, source: bindings.SourceType) => {
+            let typeHash = HighLevel.loadCellLock(index, source);
+            if (utils.eqBuf(typeHash.codeHash, dobSellingCodeHash)) {
+                let dobData = new DobSellingData(HighLevel.loadWitnessArgs(index, source).lock);
+                sporeCodeHash = dobData.getSporeCodeHash().raw();
+                sporeDataHash = dobData.getSporeDataHash().raw();
+                return true;
             }
+            return false;
+        }, bindings.SOURCE_INPUT);
+        for (let it of iters) if (it) break;
+        if (sporeCodeHash == undefined || sporeDataHash == undefined) {
+            throw "Unable to get spore information from dob selling (Inputs)";
         }
     }
 
-    let spore_data;
-    for (let it of new HighLevel.QueryIter(bindings.loadCellData, source)) {
-        try {
-            new SporeData(it);
-            // spore_data.validate();
-        } catch {
-            continue;
+    let sporeTypeId;
+    let sporeData;
+    let iters2 = new HighLevel.QueryIter((index: number, source: bindings.SourceType) => {
+        let script = HighLevel.loadCellType(index, source);
+        if (script == null) {
+            return false;
         }
-        break;
-    }
-    // let mut spore_data = None;
-    // let posion = QueryIter::new(load_cell_data, source).position(|cell_data| {
-    //     let r = spore_types::spore::SporeDataReader::verify(&cell_data, true).is_ok();
-    //     spore_data = Some(SporeData::new_unchecked(cell_data.into()));
-    //     r
-    // });
+        if (!utils.eqBuf(script.codeHash, sporeCodeHash)) { return false; }
+        let data = bindings.loadCellData(index, source);
+        if (!utils.eqBuf(utils.ckbHash(data), sporeDataHash)) { return false }
+        sporeData = new SporeData(data);
+        sporeData.validate();
+        sporeTypeId = script.args;
+        return true;
+    }, source);
+    for (let it of iters2) { if (it) break; }
 
-    // if posion.is_some() && spore_data.is_some() {
-    //     let type_script_args = load_cell_type(posion.unwrap(), source)?
-    //         .ok_or_else(|| {
-    //             log::error!("Load Spore script is none");
-    //             Error::Spore
-    //         })?
-    //         .args();
-
-    //     Ok((spore_data.unwrap(), type_script_args.try_into()?))
-    // } else {
-    //     log::error!("Spore Cell not found in {:?}", source);
-    //     Err(Error::Spore)
-    // }
-    return {
-        data: 0,
-        id: 0,
+    if (sporeData == undefined || sporeTypeId == undefined) {
+        throw `Spore Cell not found in ${source}`
     }
+
+    return [sporeData, sporeTypeId,]
 }
 
 export function selling(
-    witness_data: AccountBookData,
-    cell_data: AccountBookCellData,
-    old_smt_hash: ArrayBuffer,
+    witnessData: AccountBookData,
+    cellData: AccountBookCellData,
+    oldSmtHash: ArrayBuffer,
 ) {
-    let spore_info = load_spore(bindings.SOURCE_OUTPUT, cell_data);
-    // let cell_info = cell_data.info();
+    let [sporeData, sporeTypeId] = loadSpore(bindings.SOURCE_OUTPUT, cellData);
+    let cellInfo = cellData.getInfo();
 
-    // // Check cluster id
-    // if spore_data
-    //     .cluster_id()
-    //     .to_opt()
-    //     .ok_or_else(|| {
-    //         log::error!("Cluster ID is None in Spore Data");
-    //         Error::Spore
-    //     })?
-    //     .raw_data()
-    //     != cell_info.cluster_id().as_slice()
-    // {
-    //     log::error!("The cluster id does not match");
-    //     return Err(Error::VerifiedData);
-    // }
-    // // Check spore level
-    // let level_by_witness: u8 = cell_info.level().into();
-    // let level_by_spore = utils::get_spore_level(&spore_data)?;
-    // if level_by_witness != level_by_spore {
-    //     log::error!(
-    //         "The Spore level being sold is incorrect, {}, {}",
-    //         level_by_witness,
-    //         level_by_spore
-    //     );
-    //     return Err(Error::Spore);
-    // }
+    // Check cluster id
+    if (!utils.eqBuf(sporeData.getClusterId().value().raw(), cellInfo.getClusterId().raw())) {
+        throw `The cluster id does not match`;
+    }
 
-    // // Check price
-    // let price: u128 = cell_info.price().unpack();
-    // let (old_amount, new_amount) = {
-    //     let udt_info = utils::UDTInfo::new(cell_info.xudt_script_hash().into())?;
-    //     let (old, new) = super::check_input_type_proxy_lock(&cell_data, &udt_info)?;
+    // Check spore level
+    let levelByWitness = cellInfo.getLevel();
+    let levelBySpore = utils.getSporeLevel(sporeData);
+    if (levelByWitness != levelBySpore) {
+        throw `The Spore level being sold is incorrect, ${levelByWitness}, ${levelBySpore}`
+    }
 
-    //     if old + price != new {
-    //         log::error!(
-    //             "In and Out Error: input: {}, output: {}, price: {}",
-    //             old,
-    //             new,
-    //             price
-    //         );
-    //         return Err(Error::CheckXUDT);
-    //     }
+    // Check price
+    let price = bigintFromBytes(cellInfo.getPrice().raw());
 
-    //     (old, new)
-    // };
+    let udtInfo = new utils.UdtInfo(cellInfo.getXudtScriptHash().raw());
+    let accountBookUdt = utils.checkInputTypeProxyLock(cellData, udtInfo);
 
-    // let (old_total_income, new_total_income): (u128, u128) = {
-    //     let total: u128 = witness_data.total_income_udt().unpack();
-    //     (total, total + price)
-    // };
+    if (accountBookUdt.input + price != accountBookUdt.output) {
+        throw `In and Out Error: input: ${accountBookUdt.input}, output: ${accountBookUdt.output}, price: ${price}`
+    }
 
-    // use utils::{AccountBookProof, SmtKey};
-    // // Check the spore id here to avoid duplicate sales
-    // let proof = AccountBookProof::new(witness_data.proof().unpack());
-    // if !proof.verify(
-    //     old_smt_hash,
-    //     old_total_income,
-    //     old_amount,
-    //     (SmtKey::Buyer(spore_id.clone()), None),
-    // )? {
-    //     log::error!("Verify Input SMT failed");
-    //     return Err(Error::Smt);
-    // }
+    let oldTotalIncome = bigintFromBytes(witnessData.getTotalIncomeUdt().raw());
+    let newTotalIncome = oldTotalIncome + price;
 
-    // let new_smt_hash: Hash = cell_data.smt_root_hash().into();
-    // if !proof.verify(
-    //     new_smt_hash,
-    //     new_total_income,
-    //     new_amount,
-    //     (SmtKey::Buyer(spore_id), Some(0)),
-    // )? {
-    //     log::error!("Verify Output SMT failed");
-    //     return Err(Error::Smt);
-    // }
+    // Check the spore id here to avoid duplicate sales
+    let proof = witnessData.getProof().raw();
+    if (!utils.checkSmt(
+        oldSmtHash,
+        proof,
+        oldTotalIncome,
+        accountBookUdt.input,
+        utils.ckbHash(sporeTypeId),
+        null)) {
+        throw `Verify Input SMT failed`
+    }
+    if (!utils.checkSmt(
+        cellData.getSmtRootHash().raw(),
+        proof,
+        newTotalIncome,
+        accountBookUdt.output,
+        utils.ckbHash(sporeTypeId),
+        BigInt(0))) {
+        throw `Verify Output SMT failed`
+    }
 }
