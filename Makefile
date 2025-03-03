@@ -108,7 +108,7 @@ run:
 test: build
 	cargo test $(CARGO_ARGS)
 
-test-js: build
+test-js:
 	cargo test --features="js"
 
 check:
