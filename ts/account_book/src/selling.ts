@@ -7,8 +7,8 @@ import { SporeData } from "../../types/spore_v1"
 
 import * as utils from "./utils"
 
-function loadSpore(source: bindings.SourceType, cell_data: AccountBookCellData): [SporeData, ArrayBuffer] {
-    let cellInfo = cell_data.getInfo();
+function loadSpore(source: bindings.SourceType, cellData: AccountBookCellData): [SporeData, ArrayBuffer] {
+    let cellInfo = cellData.getInfo();
     let dobSellingCodeHash = cellInfo.getDobSellingCodeHash().raw();
 
     let sporeCodeHash: any, sporeDataHash: any;

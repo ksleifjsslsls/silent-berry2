@@ -43,7 +43,7 @@ function getTotalWithdrawn(cellData: AccountBookCellData, witnessData: AccountBo
 
         let nums = cellData.getProfitDistributionNumber().raw();
         if (nums.byteLength != accountBookLevel) {
-            throw `The profit_distribution_num price in the account book is wrong, it needs: ${accountBookLevel}, actual: ${nums.byteLength}`
+            throw `The ProfitDistributionNumber price in the account book is wrong, it needs: ${accountBookLevel}, actual: ${nums.byteLength}`
         }
         ratio = ratios[sporeLevel + 2];
         num = new Uint8Array(nums)[sporeLevel];
@@ -73,8 +73,8 @@ function getOutputUdt(cellData: AccountBookCellData, udtInfo: utils.UdtInfo, xud
 
     let iters = new HighLevel.QueryIter((index: number, source: bindings.SourceType) => { }, bindings.SOURCE_INPUT);
     for (let output of udtInfo.outputs) {
-        let lock_hash = HighLevel.loadCellLock(output.index, bindings.SOURCE_OUTPUT).hash();
-        if (utils.eqBuf(xudtLockScriptHash, lock_hash)) {
+        let lockHash = HighLevel.loadCellLock(output.index, bindings.SOURCE_OUTPUT).hash();
+        if (utils.eqBuf(xudtLockScriptHash, lockHash)) {
             return output.udt;
         }
     }
@@ -102,41 +102,39 @@ export function withdrawal(
         throw `The extracted udt is incorrect`;
     }
 
-    // let old_total_withdrawal: Option<u128> =
-    //     witness_data.withdrawn_udt().to_opt().map(|v| v.unpack());
-    // let total_income = witness_data.total_income_udt().unpack();
+    let oldTotalWithdrawal: bigint;
+    {
+        let t = witnessData.getWithdrawnUdt();
+        if (t.hasValue()) {
+            oldTotalWithdrawal = bigintFromBytes(t.value().raw());
+        } else {
+            oldTotalWithdrawal = BigInt(0);
+        }
+    }
+    let totalIncome = bigintFromBytes(witnessData.getTotalIncomeUdt().raw());
+    if (totalUdt.input - totalUdt.output != newTotalWithdrawn - oldTotalWithdrawal) {
+        throw `Error in calculation of withdrawal: total udt: old(${totalUdt.input}) new(${totalUdt.output}), totalWithdrawn: old(${oldTotalWithdrawal}) new(${newTotalWithdrawn})`
+    }
 
-    // if old_total_udt - new_total_udt != new_total_withdrawn - old_total_withdrawal.unwrap_or(0) {
-    //     log::error!(
-    //         "Error in calculation of withdrawal: total udt: old({}) new({}), total_withdrawn: old({:?}) new({})",
-    //         old_total_udt,
-    //         new_total_udt,
-    //         old_total_withdrawal,
-    //         new_total_withdrawn);
-    //     return Err(Error::AccountBook);
-    // }
-
-    // // SMT
-    // let proof = utils::AccountBookProof::new(witness_data.proof().unpack());
-    // if !proof.verify(
-    //     old_smt_hash,
-    //     total_income,
-    //     old_total_udt,
-    //     (smt_key.clone(), old_total_withdrawal),
-    // )? {
-    //     log::error!("Verify old SMT failed");
-    //     return Err(Error::AccountBook);
-    // }
-
-    // let new_smt_hash = cell_data.smt_root_hash().into();
-    // if !proof.verify(
-    //     new_smt_hash,
-    //     total_income,
-    //     new_total_udt,
-    //     (smt_key, Some(new_total_withdrawn)),
-    // )? {
-    //     log::error!("Verify new SMT failed");
-    //     return Err(Error::AccountBook);
-    // }
-
+    // SMT
+    let proof = witnessData.getProof().raw();
+    if (!utils.checkSmt(
+        oldSmtHash,
+        proof,
+        totalIncome,
+        totalUdt.input,
+        smtKey,
+        oldTotalWithdrawal)) {
+        throw `Verify Input SMT failed`
+    }
+    let newSmtHash = cellData.getSmtRootHash().raw();
+    if (!utils.checkSmt(
+        newSmtHash,
+        proof,
+        totalIncome,
+        totalUdt.output,
+        smtKey,
+        newTotalWithdrawn)) {
+        throw `Verify Output SMT failed`
+    }
 }
