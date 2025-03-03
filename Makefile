@@ -178,7 +178,7 @@ mol:
 	moleculec --language rust --schema-file crate/types/schemas/silent_berry.mol > crate/types/src/silent_berry.rs
 	cargo fmt -- crate/types/src/silent_berry.rs
 	moleculec --language - --schema-file crate/types/schemas/silent_berry.mol --format json > crate/types/src/silent_berry.json
-	moleculec-es -inputFile crate/types/src/silent_berry.json -outputFile ts/silent_berry.js
+	moleculec-es -inputFile crate/types/src/silent_berry.json -outputFile ts/types/silent_berry.js
 
 spore-mol:
 	moleculec --language rust --schema-file crate/spore-types/schemas/cobuild/basic.mol > crate/spore-types/src/cobuild/basic.rs
@@ -187,15 +187,15 @@ spore-mol:
 	moleculec --language rust --schema-file crate/spore-types/schemas/spore/spore_v2.mol > crate/spore-types/src/spore/spore_v2.rs
 	moleculec --language rust --schema-file crate/spore-types/schemas/spore/action.mol > crate/spore-types/src/spore/action.rs
 	moleculec --language - --schema-file crate/spore-types/schemas/cobuild/basic.mol --format json > crate/spore-types/src/cobuild/basic.json
-	moleculec-es -inputFile crate/spore-types/src/cobuild/basic.json -outputFile ts/basic.js
+	moleculec-es -inputFile crate/spore-types/src/cobuild/basic.json -outputFile ts/types/basic.js
 	moleculec --language - --schema-file crate/spore-types/schemas/cobuild/top_level.mol --format json > crate/spore-types/src/cobuild/top_level.json
-	moleculec-es -inputFile crate/spore-types/src/cobuild/top_level.json -outputFile ts/top_level.js
+	moleculec-es -inputFile crate/spore-types/src/cobuild/top_level.json -outputFile ts/types/top_level.js
 	moleculec --language - --schema-file crate/spore-types/schemas/spore/spore_v1.mol --format json > crate/spore-types/src/spore/spore_v1.json
-	moleculec-es -inputFile crate/spore-types/src/spore/spore_v1.json -outputFile ts/spore_v1.js
+	moleculec-es -inputFile crate/spore-types/src/spore/spore_v1.json -outputFile ts/types/spore_v1.js
 	moleculec --language - --schema-file crate/spore-types/schemas/spore/spore_v2.mol --format json > crate/spore-types/src/spore/spore_v2.json
-	moleculec-es -inputFile crate/spore-types/src/spore/spore_v2.json -outputFile ts/spore_v2.js
+	moleculec-es -inputFile crate/spore-types/src/spore/spore_v2.json -outputFile ts/types/spore_v2.js
 	moleculec --language - --schema-file crate/spore-types/schemas/spore/action.mol --format json > crate/spore-types/src/spore/action.json
-	moleculec-es -inputFile crate/spore-types/src/spore/action.json -outputFile ts/action.js
+	moleculec-es -inputFile crate/spore-types/src/spore/action.json -outputFile ts/types/action.js
 
 # Generate checksum info for reproducible build
 CHECKSUM_FILE := build/checksums-$(MODE).txt
