@@ -31,12 +31,14 @@ pub const CKB_JS_VM: &str = "ckb-js-vm";
 
 use lazy_static::lazy_static;
 
+#[cfg(feature = "js")]
 lazy_static! {
     pub static ref AccountBookTsBin: ckb_testtool::ckb_types::bytes::Bytes =
         ckb_testtool::ckb_types::bytes::Bytes::from(
             &include_bytes!("../../ts/account_book/dist/index.bc")[..]
         );
 }
+
 lazy_static! {
     static ref BuyIntentCodeHash: [u8; 32] = get_code_hash(BUY_INTENT_NAME);
     static ref DOBSellingCodeHash: [u8; 32] = get_code_hash(DOB_SELLING_NAME);

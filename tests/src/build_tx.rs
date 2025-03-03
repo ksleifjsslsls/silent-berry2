@@ -171,25 +171,30 @@ pub fn build_account_book_script(context: &mut Context, type_id: Option<Hash>) -
     let args: [u8; 32] = type_id.into();
 
     if using_js() {
-        let out_point = context.deploy_cell_by_name(CKB_JS_VM);
-        let js_code_hash = ckb_hash(&AccountBookTsBin);
+        #[cfg(feature = "js")]
+        {
+            let out_point = context.deploy_cell_by_name(CKB_JS_VM);
+            let js_code_hash = ckb_hash(&AccountBookTsBin);
 
-        let args = [
-            [0u8; 2].as_slice(),
-            &js_code_hash,
-            &[ScriptHashType::Data2 as u8],
-            &args,
-        ]
-        .concat();
-        Some(
-            context
-                .build_script_with_hash_type(
-                    &out_point,
-                    ScriptHashType::Data2,
-                    args.to_vec().into(),
-                )
-                .expect("build xudt"),
-        )
+            let args = [
+                [0u8; 2].as_slice(),
+                &js_code_hash,
+                &[ScriptHashType::Data2 as u8],
+                &args,
+            ]
+            .concat();
+            Some(
+                context
+                    .build_script_with_hash_type(
+                        &out_point,
+                        ScriptHashType::Data2,
+                        args.to_vec().into(),
+                    )
+                    .expect("build xudt"),
+            )
+        }
+        #[cfg(not(feature = "js"))]
+        None
     } else {
         let out_point = context.deploy_cell_by_name(ACCOUNT_BOOK_NAME);
         Some(
@@ -522,7 +527,8 @@ pub fn build_withdrawal_intent_script(
     )
 }
 
-pub fn update_deps(context: &mut Context, tx: TransactionView) -> TransactionView {
+pub fn update_deps(_context: &mut Context, tx: TransactionView) -> TransactionView {
+    #[cfg(feature = "js")]
     if using_js() {
         let out_point = OutPoint::new_builder()
             .tx_hash(ckb_testtool::context::random_hash())
@@ -530,7 +536,7 @@ pub fn update_deps(context: &mut Context, tx: TransactionView) -> TransactionVie
         let bin = crate::AccountBookTsBin.clone();
         let cell = {
             let cell = CellOutput::new_builder()
-                .lock(build_always_suc_script(context, Default::default()))
+                .lock(build_always_suc_script(_context, Default::default()))
                 .build();
             let occupied_capacity = cell
                 .occupied_capacity(
@@ -540,11 +546,13 @@ pub fn update_deps(context: &mut Context, tx: TransactionView) -> TransactionVie
                 .expect("cell capacity");
             cell.as_builder().capacity(occupied_capacity.pack()).build()
         };
-        context.cells.insert(out_point.clone(), (cell, bin));
+        _context.cells.insert(out_point.clone(), (cell, bin));
         // AccountBookTsBin
         let cell_dep = CellDep::new_builder().out_point(out_point.clone()).build();
         tx.as_advanced_builder().cell_dep(cell_dep).build()
     } else {
         tx
     }
+    #[cfg(not(feature = "js"))]
+    tx
 }

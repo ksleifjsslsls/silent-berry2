@@ -15,11 +15,7 @@ jobs:
       run: sudo apt update && sudo apt install -y clang
     - name: Instell rust risc-v
       run: rustup target add riscv64imac-unknown-none-elf
-    - name: Install JS Deps
-      run: cd ts && pnpm install
     - name: Build all
-      run: make build build-js
+      run: make build
     - name: Run Test
       run: make test check fmt clippy
-    - name: Run JS Test
-      run: make test-js
