@@ -168,3 +168,47 @@ export class AccountBookCellData extends mol.Entity.Base<AccountBookCellDataLike
     }
 }
 
+export type DobSellingDataLike = {
+    account_book_script_hash: BytesLike,
+    spore_code_hash: BytesLike,
+    spore_data_hash: BytesLike,
+    buy_intent_code_hash: BytesLike,
+    owner_script_hash: BytesLike,
+    spore_lock_script_hash: BytesLike,
+};
+@mol.codec(
+    mol.struct({
+        account_book_script_hash: mol.Byte32,
+        spore_code_hash: mol.Byte32,
+        spore_data_hash: mol.Byte32,
+        buy_intent_code_hash: mol.Byte32,
+        owner_script_hash: mol.Byte32,
+        spore_lock_script_hash: mol.Byte32,
+    }),
+)
+export class DobSellingData extends mol.Entity.Base<DobSellingDataLike, DobSellingData>() {
+    constructor(
+        public account_book_script_hash: Bytes,
+        public spore_code_hash: Bytes,
+        public spore_data_hash: Bytes,
+        public buy_intent_code_hash: Bytes,
+        public owner_script_hash: Bytes,
+        public spore_lock_script_hash: Bytes,
+    ) {
+        super();
+    }
+    static from(op: DobSellingDataLike): DobSellingData {
+        if (op instanceof DobSellingData) {
+            return op;
+        }
+        return new DobSellingData(
+            op.account_book_script_hash,
+            op.spore_code_hash,
+            op.spore_data_hash,
+            op.buy_intent_code_hash,
+            op.owner_script_hash,
+            op.spore_lock_script_hash
+        );
+    }
+}
+

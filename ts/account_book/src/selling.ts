@@ -2,10 +2,9 @@
 
 import * as bindings from "@ckb-js-std/bindings";
 import { HighLevel, bytesEq } from "@ckb-js-std/core";
-import { DobSellingData } from "../../types/silent_berry"
 import { SporeData } from "../../types/spore_v1"
 
-import { AccountBookData, AccountBookCellData } from "./mol_types";
+import { AccountBookData, AccountBookCellData, DobSellingData } from "./mol_types";
 import * as utils from "./utils"
 
 function loadSpore(source: bindings.SourceType, cellData: AccountBookCellData): [SporeData, ArrayBuffer] {
@@ -17,9 +16,13 @@ function loadSpore(source: bindings.SourceType, cellData: AccountBookCellData): 
         let iters = new HighLevel.QueryIter((index: number, source: bindings.SourceType) => {
             let typeHash = HighLevel.loadCellLock(index, source);
             if (bytesEq(typeHash.codeHash, dobSellingCodeHash)) {
-                let dobData = new DobSellingData(HighLevel.loadWitnessArgs(index, source).lock);
-                sporeCodeHash = dobData.getSporeCodeHash().raw();
-                sporeDataHash = dobData.getSporeDataHash().raw();
+                let data = HighLevel.loadWitnessArgs(index, source).lock;
+                if (data == undefined) {
+                    throw `unknow error: Load dobsellingdata`
+                }
+                let dobData = DobSellingData.decode(data);
+                sporeCodeHash = dobData.spore_code_hash;
+                sporeDataHash = dobData.spore_data_hash;
                 return true;
             }
             return false;

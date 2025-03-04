@@ -51,8 +51,6 @@ function verifyCellData(o: AccountBookCellData, n: AccountBookCellData) {
     let oInfo = o.info;
     let nInfo = n.info;
 
-    log.debug(`mk1: ${oInfo.price}, ${nInfo.price}`);
-
     if (!oInfo.eq(nInfo)) {
         throw "Modification of CellData is not allowed (AccountBookCellInfo)"
     }
