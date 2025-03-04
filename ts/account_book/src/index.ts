@@ -1,9 +1,9 @@
 import * as utils from "./utils"
 
 import * as bindings from "@ckb-js-std/bindings";
-import { bigintFromBytes, HighLevel, log } from "@ckb-js-std/core";
-import { AccountBookData, AccountBookCellData } from "../../types/silent_berry"
+import { HighLevel, log } from "@ckb-js-std/core";
 
+import { AccountBookCellData, AccountBookData } from "./mol_types"
 import { creation } from "./creation"
 import { selling } from "./selling"
 import { withdrawal } from "./withdrawal"
@@ -12,7 +12,10 @@ log.setLevel(log.LogLevel.Debug);
 
 function loadAccountBookData(index: number, source: bindings.SourceType) {
     let witness = HighLevel.loadWitnessArgs(index, source).outputType;
-    return new AccountBookData(witness);
+    if (witness == undefined) {
+        throw `Load AccoutBook witness data failed: index(${index}) source(${source})`
+    }
+    return AccountBookData.decode(witness);
 }
 
 function isCreation() {
@@ -45,28 +48,30 @@ function theOnly(source: bindings.SourceType) {
 }
 
 function verifyCellData(o: AccountBookCellData, n: AccountBookCellData) {
-    let oInfo = o.getInfo();
-    let nInfo = n.getInfo();
+    let oInfo = o.info;
+    let nInfo = n.info;
 
-    if (!utils.eqBuf(oInfo.view.buffer, nInfo.view.buffer)) {
+    log.debug(`mk1: ${oInfo.price}, ${nInfo.price}`);
+
+    if (!oInfo.eq(nInfo)) {
         throw "Modification of CellData is not allowed (AccountBookCellInfo)"
     }
 
-    let oldNum = o.getProfitDistributionNumber().raw();
-    let newNum = n.getProfitDistributionNumber().raw();
+    let oldNum = o.profit_distribution_number;
+    let newNum = n.profit_distribution_number;
     if (!utils.eqBuf(oldNum, newNum)) {
         throw "Modification of CellData is not allowed (ProfitDistributionNumber)"
     }
 
-    let oldRatio = o.getProfitDistributionRatio().raw();
-    let newRatio = n.getProfitDistributionRatio().raw();
+    let oldRatio = o.profit_distribution_ratio;
+    let newRatio = n.profit_distribution_ratio;
     if (!utils.eqBuf(oldRatio, newRatio)) {
         throw "Modification of CellData is not allowed (ProfitDistributionRatio)"
     }
 }
 
 function isSelling(newCellData: AccountBookCellData) {
-    let dobSellingCodeHash = newCellData.getInfo().getDobSellingCodeHash().raw();
+    let dobSellingCodeHash = newCellData.info.dob_selling_code_hash;
 
     let count = 0;
     let iters = (new HighLevel.QueryIter(HighLevel.loadCellLock, bindings.SOURCE_INPUT));
@@ -81,7 +86,7 @@ function isSelling(newCellData: AccountBookCellData) {
     }
 
     count = 0;
-    let withdrawalCodeHash = newCellData.getInfo().getWithdrawalIntentCodeHash().raw();
+    let withdrawalCodeHash = newCellData.info.withdrawal_intent_code_hash;
     let iters2 = (new HighLevel.QueryIter(HighLevel.loadCellType, bindings.SOURCE_INPUT));
     for (let it of iters2) {
         if (it == null) continue;
@@ -103,8 +108,8 @@ function loadVerifiedCellData() {
 
     verifyCellData(oldData, newData);
 
-    let oldBuyerCount = oldData.getBuyerCount().toLittleEndianUint32();
-    let newBuyerCount = newData.getBuyerCount().toLittleEndianUint32();
+    let oldBuyerCount = oldData.buyer_count;
+    let newBuyerCount = newData.buyer_count;
 
     const s = isSelling(newData);
     if (s && oldBuyerCount + 1 != newBuyerCount) {
@@ -114,7 +119,7 @@ function loadVerifiedCellData() {
     }
     return {
         data: newData,
-        oldSmt: oldData.getSmtRootHash().raw(),
+        oldSmt: oldData.smt_root_hash,
         isSelling: s,
     }
 }

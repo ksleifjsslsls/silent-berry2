@@ -1,7 +1,8 @@
 import * as bindings from "@ckb-js-std/bindings";
-import { bigintFromBytes, bigintToBytes, HighLevel, log, numFromBytes } from "@ckb-js-std/core";
-import { AccountBookData, AccountBookCellData, Uint128Opt } from "../../types/silent_berry"
+import { bigintFromBytes, bigintToBytes, HighLevel, log, } from "@ckb-js-std/core";
 import { Buffer } from "buffer"
+
+import { AccountBookCellData } from "./mol_types"
 import { SporeData } from "../../types/spore_v1";
 
 export function eqBuf(a1: ArrayBuffer, a2: ArrayBuffer) {
@@ -17,12 +18,12 @@ export function eqBuf(a1: ArrayBuffer, a2: ArrayBuffer) {
 
 export function loadAccountBookCellData(index: number, source: bindings.SourceType) {
     let data = bindings.loadCellData(index, source);
-    return new AccountBookCellData(data);
+    return AccountBookCellData.decode(data);
 }
 
 export function getRatios(cellData: AccountBookCellData, level: number) {
 
-    let buf = new Uint8Array(cellData.getProfitDistributionRatio().raw());
+    let buf = new Uint8Array(cellData.profit_distribution_ratio);
     if (buf.length != level + 2) {
         throw `The ProfitDistributionRatio price in the account book is wrong, it needs: ${level + 2}, actual: ${buf.length}`;
 
@@ -168,7 +169,7 @@ export function checkInputTypeProxyLock(cellData: AccountBookCellData, udtInfo: 
     if (selfScriptHash == null) {
         throw "unknow error: Get GroupInput Type hash failed"
     }
-    let proxyLockCodeHash = cellData.getInfo().getInputTypeProxyLockCodeHash().raw();
+    let proxyLockCodeHash = cellData.info.input_type_proxy_lock_code_hash;
     let iters = new HighLevel.QueryIter(
         (index: number, source: bindings.SourceType) => {
             let hash = HighLevel.loadCellLock(index, source).codeHash;

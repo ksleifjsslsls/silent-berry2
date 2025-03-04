@@ -481,6 +481,10 @@ fn test_simple_withdrawal_suc() {
     let spore_level = 1;
     let total_income = 300000u128;
     let old_total_udt = 10000u128;
+
+    // let total_income = 0x011111113000000000u128;
+    // let old_total_udt = 0x001111113000000000u128;
+
     let old_total_withdrawal = Some(10u128);
 
     let new_total_withdrawal: u128 =
