@@ -1,20 +1,9 @@
 import * as bindings from "@ckb-js-std/bindings";
-import { bigintFromBytes, bigintToBytes, HighLevel, log, } from "@ckb-js-std/core";
+import { bigintFromBytes, bigintToBytes, HighLevel, bytesEq, log, } from "@ckb-js-std/core";
 import { Buffer } from "buffer"
 
 import { AccountBookCellData } from "./mol_types"
 import { SporeData } from "../../types/spore_v1";
-
-export function eqBuf(a1: ArrayBuffer, a2: ArrayBuffer) {
-    if (a1.byteLength != a2.byteLength) return false;
-
-    let b1 = new Uint8Array(a1);
-    let b2 = new Uint8Array(a2);
-    for (let i = 0; i < b1.length; i++) {
-        if (b1[i] != b2[i]) return false;
-    }
-    return true;
-}
 
 export function loadAccountBookCellData(index: number, source: bindings.SourceType) {
     let data = bindings.loadCellData(index, source);
@@ -125,7 +114,7 @@ function getIndexByScriptHash(hash: ArrayBuffer, source: bindings.SourceType) {
         (index: number, source: bindings.SourceType) => {
             let hash2 = HighLevel.loadCellTypeHash(index, source);
             if (hash2 == null) { return null; }
-            if (eqBuf(hash, hash2)) {
+            if (bytesEq(hash, hash2)) {
                 return index;
             } else {
                 return null;
@@ -173,7 +162,7 @@ export function checkInputTypeProxyLock(cellData: AccountBookCellData, udtInfo: 
     let iters = new HighLevel.QueryIter(
         (index: number, source: bindings.SourceType) => {
             let hash = HighLevel.loadCellLock(index, source).codeHash;
-            if (eqBuf(hash, proxyLockCodeHash)) {
+            if (bytesEq(hash, proxyLockCodeHash)) {
                 return index;
             } else { return null; }
         },
@@ -191,10 +180,10 @@ export function checkInputTypeProxyLock(cellData: AccountBookCellData, udtInfo: 
     let inputAmount = null;
     for (let input of udtInfo.inputs) {
         let script = HighLevel.loadCellLock(input.index, bindings.SOURCE_INPUT);
-        if (!eqBuf(proxyLockCodeHash, script.codeHash)) {
+        if (!bytesEq(proxyLockCodeHash, script.codeHash)) {
             continue;
         }
-        if (!eqBuf(selfScriptHash, script.args)) {
+        if (!bytesEq(selfScriptHash, script.args)) {
             continue;
         }
         inputAmount = input.udt;
@@ -207,10 +196,10 @@ export function checkInputTypeProxyLock(cellData: AccountBookCellData, udtInfo: 
     let outputAmount = null;
     for (let output of udtInfo.outputs) {
         let script = HighLevel.loadCellLock(output.index, bindings.SOURCE_OUTPUT);
-        if (!eqBuf(proxyLockCodeHash, script.codeHash)) {
+        if (!bytesEq(proxyLockCodeHash, script.codeHash)) {
             continue;
         }
-        if (!eqBuf(selfScriptHash, script.args)) {
+        if (!bytesEq(selfScriptHash, script.args)) {
             continue;
         }
         outputAmount = output.udt;
@@ -229,7 +218,7 @@ export function checkInputTypeProxyLock(cellData: AccountBookCellData, udtInfo: 
 function fromSameTxHash(index: number) {
     let txHash1 = HighLevel.loadInputOutPoint(index, bindings.SOURCE_INPUT).txHash;
     let txHash2 = HighLevel.loadInputOutPoint(0, bindings.SOURCE_GROUP_INPUT).txHash;
-    if (!eqBuf(txHash1, txHash2)) {
+    if (!bytesEq(txHash1, txHash2)) {
         throw `xUDT and AccountBook must come from the same Outpoint`;
     }
 }

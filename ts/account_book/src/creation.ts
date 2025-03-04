@@ -1,5 +1,5 @@
 import * as bindings from "@ckb-js-std/bindings";
-import { bigintFromBytes, HighLevel, log } from "@ckb-js-std/core";
+import { bigintFromBytes, HighLevel, bytesEq, log } from "@ckb-js-std/core";
 
 import { AccountBookData, AccountBookCellData } from "./mol_types";
 import *  as utils from "./utils"
@@ -33,7 +33,7 @@ function checkBounds() {
 
 function checkXudtCell(cellData: AccountBookCellData) {
     let proxyLock = HighLevel.loadCellLock(0, bindings.SOURCE_OUTPUT);
-    if (!utils.eqBuf(proxyLock.codeHash, cellData.info.input_type_proxy_lock_code_hash)) {
+    if (!bytesEq(proxyLock.codeHash, cellData.info.input_type_proxy_lock_code_hash)) {
         throw "InputTypeProxyLockCodeHash verification failed"
     }
 
@@ -41,7 +41,7 @@ function checkXudtCell(cellData: AccountBookCellData) {
     if (curScriptHash == null) {
         throw "unknow error: The script should be of type"
     } else {
-        if (!utils.eqBuf(proxyLock.args, curScriptHash)) {
+        if (!bytesEq(proxyLock.args, curScriptHash)) {
             throw "InputTypeProxyLock args does not point to Account book script"
         }
     }
@@ -50,7 +50,7 @@ function checkXudtCell(cellData: AccountBookCellData) {
     if (xudtScriptHash == null) {
         throw "Output[0] type script must be xudt (Now is null)"
     } else {
-        if (!utils.eqBuf(xudtScriptHash, cellData.info.xudt_script_hash)) {
+        if (!bytesEq(xudtScriptHash, cellData.info.xudt_script_hash)) {
             throw "Output[0] type script must be xudt"
         }
     }
@@ -82,7 +82,7 @@ function checkCellData(witnessData: AccountBookData, cellData: AccountBookCellDa
         0x20, 0xa0, 0xc0, 0x4c, 0x9b, 0x51, 0x16, 0xa1, 0xdb, 0x45, 0x35, 0x62, 0x5e, 0x26, 0xe7, 0x4e,
     ]);
     let smtRootHash = cellData.smt_root_hash;
-    if (!utils.eqBuf(new Uint8Array(smtRootHash), SMT_ROOT_HASH_INITIAL)) {
+    if (!bytesEq(new Uint8Array(smtRootHash), SMT_ROOT_HASH_INITIAL)) {
         throw `smtRootHash is not default value`;
     }
     let proof = witnessData.proof;

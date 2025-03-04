@@ -1,7 +1,7 @@
 import * as utils from "./utils"
 
 import * as bindings from "@ckb-js-std/bindings";
-import { HighLevel, log } from "@ckb-js-std/core";
+import { HighLevel, bytesEq, log } from "@ckb-js-std/core";
 
 import { AccountBookCellData, AccountBookData } from "./mol_types"
 import { creation } from "./creation"
@@ -59,13 +59,13 @@ function verifyCellData(o: AccountBookCellData, n: AccountBookCellData) {
 
     let oldNum = o.profit_distribution_number;
     let newNum = n.profit_distribution_number;
-    if (!utils.eqBuf(oldNum, newNum)) {
+    if (!bytesEq(oldNum, newNum)) {
         throw "Modification of CellData is not allowed (ProfitDistributionNumber)"
     }
 
     let oldRatio = o.profit_distribution_ratio;
     let newRatio = n.profit_distribution_ratio;
-    if (!utils.eqBuf(oldRatio, newRatio)) {
+    if (!bytesEq(oldRatio, newRatio)) {
         throw "Modification of CellData is not allowed (ProfitDistributionRatio)"
     }
 }
@@ -76,7 +76,7 @@ function isSelling(newCellData: AccountBookCellData) {
     let count = 0;
     let iters = (new HighLevel.QueryIter(HighLevel.loadCellLock, bindings.SOURCE_INPUT));
     for (let it of iters) {
-        if (utils.eqBuf(it.codeHash, dobSellingCodeHash)) {
+        if (bytesEq(it.codeHash, dobSellingCodeHash)) {
             count += 1;
             break;
         }
@@ -90,7 +90,7 @@ function isSelling(newCellData: AccountBookCellData) {
     let iters2 = (new HighLevel.QueryIter(HighLevel.loadCellType, bindings.SOURCE_INPUT));
     for (let it of iters2) {
         if (it == null) continue;
-        if (utils.eqBuf(it.codeHash, withdrawalCodeHash)) {
+        if (bytesEq(it.codeHash, withdrawalCodeHash)) {
             count += 1;
             break;
         }

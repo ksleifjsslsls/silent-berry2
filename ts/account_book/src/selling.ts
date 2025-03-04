@@ -1,7 +1,7 @@
 // TODO mol CCC
 
 import * as bindings from "@ckb-js-std/bindings";
-import { HighLevel, } from "@ckb-js-std/core";
+import { HighLevel, bytesEq } from "@ckb-js-std/core";
 import { DobSellingData } from "../../types/silent_berry"
 import { SporeData } from "../../types/spore_v1"
 
@@ -16,7 +16,7 @@ function loadSpore(source: bindings.SourceType, cellData: AccountBookCellData): 
     {
         let iters = new HighLevel.QueryIter((index: number, source: bindings.SourceType) => {
             let typeHash = HighLevel.loadCellLock(index, source);
-            if (utils.eqBuf(typeHash.codeHash, dobSellingCodeHash)) {
+            if (bytesEq(typeHash.codeHash, dobSellingCodeHash)) {
                 let dobData = new DobSellingData(HighLevel.loadWitnessArgs(index, source).lock);
                 sporeCodeHash = dobData.getSporeCodeHash().raw();
                 sporeDataHash = dobData.getSporeDataHash().raw();
@@ -37,9 +37,9 @@ function loadSpore(source: bindings.SourceType, cellData: AccountBookCellData): 
         if (script == null) {
             return false;
         }
-        if (!utils.eqBuf(script.codeHash, sporeCodeHash)) { return false; }
+        if (!bytesEq(script.codeHash, sporeCodeHash)) { return false; }
         let data = bindings.loadCellData(index, source);
-        if (!utils.eqBuf(utils.ckbHash(data), sporeDataHash)) { return false }
+        if (!bytesEq(utils.ckbHash(data), sporeDataHash)) { return false }
         sporeData = new SporeData(data);
         sporeData.validate();
         sporeTypeId = script.args;
@@ -63,7 +63,7 @@ export function selling(
     let cellInfo = cellData.info;
 
     // Check cluster id
-    if (!utils.eqBuf(sporeData.getClusterId().value().raw(), cellInfo.cluster_id)) {
+    if (!bytesEq(sporeData.getClusterId().value().raw(), cellInfo.cluster_id)) {
         throw `The cluster id does not match`;
     }
 

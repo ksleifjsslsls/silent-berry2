@@ -1,5 +1,5 @@
 import * as bindings from "@ckb-js-std/bindings";
-import { bigintFromBytes, HighLevel, log } from "@ckb-js-std/core";
+import { HighLevel, bytesEq, log } from "@ckb-js-std/core";
 import { WithdrawalIntentData, Byte32, WithdrawalSporeInfo } from "../../types/silent_berry"
 
 import { AccountBookData, AccountBookCellData } from "./mol_types";
@@ -13,7 +13,7 @@ function getWithdrawalData(hash: ArrayBuffer) {
             if (script == null) {
                 return null;
             }
-            if (utils.eqBuf(script.codeHash, hash)) { return index; }
+            if (bytesEq(script.codeHash, hash)) { return index; }
             else { return null }
         }, bindings.SOURCE_INPUT);
     for (let it of iters) { if (it != null) { indexs.push(it); } }
@@ -51,11 +51,11 @@ function getTotalWithdrawn(cellData: AccountBookCellData, witnessData: AccountBo
         smtKey = utils.ckbHash(sporeId);
     } else if (buyer instanceof Byte32) {
         let scriptHash = buyer.raw();
-        if (utils.eqBuf(scriptHash, cellInfo.auther_id)) {
+        if (bytesEq(scriptHash, cellInfo.auther_id)) {
             ratio = ratios[1];
             num = 1;
             smtKey = utils.ckbHashStr("Auther");
-        } else if (utils.eqBuf(scriptHash, cellInfo.platform_id)) {
+        } else if (bytesEq(scriptHash, cellInfo.platform_id)) {
             ratio = ratios[0];
             num = 1;
             smtKey = utils.ckbHashStr("Platform");
@@ -75,7 +75,7 @@ function getOutputUdt(cellData: AccountBookCellData, udtInfo: utils.UdtInfo, xud
     let iters = new HighLevel.QueryIter((index: number, source: bindings.SourceType) => { }, bindings.SOURCE_INPUT);
     for (let output of udtInfo.outputs) {
         let lockHash = HighLevel.loadCellLock(output.index, bindings.SOURCE_OUTPUT).hash();
-        if (utils.eqBuf(xudtLockScriptHash, lockHash)) {
+        if (bytesEq(xudtLockScriptHash, lockHash)) {
             return output.udt;
         }
     }
