@@ -82,7 +82,7 @@ function checkCellData(witnessData: AccountBookData, cellData: AccountBookCellDa
         0x20, 0xa0, 0xc0, 0x4c, 0x9b, 0x51, 0x16, 0xa1, 0xdb, 0x45, 0x35, 0x62, 0x5e, 0x26, 0xe7, 0x4e,
     ]);
     let smtRootHash = cellData.smt_root_hash;
-    if (!bytesEq(new Uint8Array(smtRootHash), SMT_ROOT_HASH_INITIAL)) {
+    if (!bytesEq(smtRootHash, SMT_ROOT_HASH_INITIAL.buffer)) {
         throw `smtRootHash is not default value`;
     }
     let proof = witnessData.proof;
