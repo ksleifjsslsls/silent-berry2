@@ -3,7 +3,7 @@ import * as utils from "./utils"
 import * as bindings from "@ckb-js-std/bindings";
 import { HighLevel, bytesEq, log } from "@ckb-js-std/core";
 
-import { AccountBookCellData, AccountBookData } from "./mol_types"
+import { AccountBookCellData, AccountBookData } from "./types"
 import { creation } from "./creation"
 import { selling } from "./selling"
 import { withdrawal } from "./withdrawal"
@@ -124,7 +124,9 @@ function loadVerifiedCellData() {
 
 function main() {
     log.debug("Begin TS AccountBook");
+    (globalThis as any).DBGCycles.p(`checkTypeId begin`);
     HighLevel.checkTypeId(35);
+    (globalThis as any).DBGCycles.p(`checkTypeId end`);
 
     let witnessData = loadAccountBookData(0, bindings.SOURCE_GROUP_OUTPUT);
     if (isCreation()) {
@@ -137,7 +139,9 @@ function main() {
         if (ret.isSelling) {
             selling(witnessData, ret.data, ret.oldSmt);
         } else {
+            (globalThis as any).DBGCycles.p(`withdrawal begin`);
             withdrawal(witnessData, ret.data, ret.oldSmt);
+            (globalThis as any).DBGCycles.p(`withdrawal end`);
         }
     }
 

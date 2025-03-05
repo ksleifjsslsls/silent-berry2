@@ -2,11 +2,11 @@ import * as bindings from "@ckb-js-std/bindings";
 import { bigintFromBytes, bigintToBytes, HighLevel, bytesEq, log, } from "@ckb-js-std/core";
 import { Buffer } from "buffer"
 
-import { AccountBookCellData } from "./mol_types"
-import { SporeData } from "../../types/spore_v1";
+import { AccountBookCellData, SporeData } from "./types"
 
 export function loadAccountBookCellData(index: number, source: bindings.SourceType) {
     let data = bindings.loadCellData(index, source);
+    let aax = AccountBookCellData.decode(data);
     return AccountBookCellData.decode(data);
 }
 
@@ -86,7 +86,7 @@ function charToNumber(c: number) {
 }
 
 export function getSporeLevel(sporeData: SporeData) {
-    let content = new Uint8Array(sporeData.getContent().raw());
+    let content = new Uint8Array(sporeData.content);
     if (content.length == 0) {
         throw `spore data is empty`;
     }

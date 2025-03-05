@@ -2,7 +2,7 @@ import * as bindings from "@ckb-js-std/bindings";
 import { HighLevel, bytesEq, log } from "@ckb-js-std/core";
 import { WithdrawalIntentData, Byte32, WithdrawalSporeInfo } from "../../types/silent_berry"
 
-import { AccountBookData, AccountBookCellData } from "./mol_types";
+import { AccountBookData, AccountBookCellData } from "./types";
 import * as utils from "./utils"
 
 function getWithdrawalData(hash: ArrayBuffer) {

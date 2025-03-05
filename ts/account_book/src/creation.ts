@@ -1,7 +1,7 @@
 import * as bindings from "@ckb-js-std/bindings";
 import { bigintFromBytes, HighLevel, bytesEq, log } from "@ckb-js-std/core";
 
-import { AccountBookData, AccountBookCellData } from "./mol_types";
+import { AccountBookData, AccountBookCellData } from "./types";
 import *  as utils from "./utils"
 
 function checkBounds() {

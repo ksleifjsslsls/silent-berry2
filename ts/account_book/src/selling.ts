@@ -2,9 +2,8 @@
 
 import * as bindings from "@ckb-js-std/bindings";
 import { HighLevel, bytesEq } from "@ckb-js-std/core";
-import { SporeData } from "../../types/spore_v1"
 
-import { AccountBookData, AccountBookCellData, DobSellingData } from "./mol_types";
+import { AccountBookData, AccountBookCellData, DobSellingData, SporeData } from "./types";
 import * as utils from "./utils"
 
 function loadSpore(source: bindings.SourceType, cellData: AccountBookCellData): [SporeData, ArrayBuffer] {
@@ -43,8 +42,7 @@ function loadSpore(source: bindings.SourceType, cellData: AccountBookCellData): 
         if (!bytesEq(script.codeHash, sporeCodeHash)) { return false; }
         let data = bindings.loadCellData(index, source);
         if (!bytesEq(utils.ckbHash(data), sporeDataHash)) { return false }
-        sporeData = new SporeData(data);
-        sporeData.validate();
+        sporeData = SporeData.decode(data);
         sporeTypeId = script.args;
         return true;
     }, source);
@@ -65,8 +63,12 @@ export function selling(
     let [sporeData, sporeTypeId] = loadSpore(bindings.SOURCE_OUTPUT, cellData);
     let cellInfo = cellData.info;
 
+    let clusterId = sporeData.cluster_id;
+    if (clusterId == null) {
+        throw `clusterId is Empty`
+    }
     // Check cluster id
-    if (!bytesEq(sporeData.getClusterId().value().raw(), cellInfo.cluster_id)) {
+    if (!bytesEq(clusterId, cellInfo.cluster_id)) {
         throw `The cluster id does not match`;
     }
 

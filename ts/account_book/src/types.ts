@@ -9,6 +9,13 @@ function optionToNum(n: Num | null | undefined) {
         return n;
     }
 }
+function optionToBytes(n: Bytes | null | undefined) {
+    if (n == undefined || n == null) {
+        return null;
+    } else {
+        return n;
+    }
+}
 
 export type AccountBookDataLike = {
     proof: BytesLike;
@@ -211,4 +218,38 @@ export class DobSellingData extends mol.Entity.Base<DobSellingDataLike, DobSelli
         );
     }
 }
+
+export type SporeDataLike = {
+    content_type: BytesLike,
+    content: BytesLike,
+    cluster_id?: BytesLike | null,
+};
+@mol.codec(
+    mol.table({
+        content_type: mol.Bytes,
+        content: mol.Bytes,
+        cluster_id: mol.BytesOpt,
+    }),
+)
+export class SporeData extends mol.Entity.Base<SporeDataLike, SporeData>() {
+    constructor(
+        public content_type: Bytes,
+        public content: Bytes,
+        public cluster_id: Bytes | null,
+    ) {
+        super();
+    }
+    static from(op: SporeDataLike): SporeData {
+        if (op instanceof SporeData) {
+            return op;
+        }
+
+        return new SporeData(
+            op.content_type,
+            op.content,
+            optionToBytes(op.cluster_id),
+        );
+    }
+}
+
 
