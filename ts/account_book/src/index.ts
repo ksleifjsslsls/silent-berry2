@@ -123,28 +123,29 @@ function loadVerifiedCellData() {
 }
 
 function main() {
-    log.debug("Begin TS AccountBook");
-    (globalThis as any).DBGCycles.p(`checkTypeId begin`);
+    (globalThis as any).DBGCycles.p(`Befor main`);
     HighLevel.checkTypeId(35);
-    (globalThis as any).DBGCycles.p(`checkTypeId end`);
+    (globalThis as any).DBGCycles.p(`checkTypeId`);
 
     let witnessData = loadAccountBookData(0, bindings.SOURCE_GROUP_OUTPUT);
+    (globalThis as any).DBGCycles.p(`loadAccountBookData`);
     if (isCreation()) {
         return creation(witnessData);
     } else {
+        (globalThis as any).DBGCycles.p(`isCreation`);
         theOnly(bindings.SOURCE_GROUP_INPUT);
         theOnly(bindings.SOURCE_GROUP_OUTPUT);
+        (globalThis as any).DBGCycles.p(`theOnly x2`);
 
         let ret = loadVerifiedCellData();
+        (globalThis as any).DBGCycles.p(`loadVerifiedCellData`);
         if (ret.isSelling) {
             selling(witnessData, ret.data, ret.oldSmt);
+            (globalThis as any).DBGCycles.p(`selling`);
         } else {
-            (globalThis as any).DBGCycles.p(`withdrawal begin`);
             withdrawal(witnessData, ret.data, ret.oldSmt);
-            (globalThis as any).DBGCycles.p(`withdrawal end`);
+            (globalThis as any).DBGCycles.p(`withdrawal`);
         }
     }
-
-    log.debug("End TS AccountBook");
 }
 main();
