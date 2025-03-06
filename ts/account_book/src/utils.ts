@@ -12,7 +12,7 @@ export function loadAccountBookCellData(index: number, source: bindings.SourceTy
 
 export function getRatios(cellData: AccountBookCellData, level: number) {
 
-    let buf = new Uint8Array(cellData.profit_distribution_ratio);
+    let buf = new Uint8Array(cellData.profitDistributionRatio);
     if (buf.length != level + 2) {
         throw `The ProfitDistributionRatio price in the account book is wrong, it needs: ${level + 2}, actual: ${buf.length}`;
 
@@ -158,7 +158,7 @@ export function checkInputTypeProxyLock(cellData: AccountBookCellData, udtInfo: 
     if (selfScriptHash == null) {
         throw "unknow error: Get GroupInput Type hash failed"
     }
-    let proxyLockCodeHash = cellData.info.input_type_proxy_lock_code_hash;
+    let proxyLockCodeHash = cellData.info.inputTypeProxyLockCodeHash;
     let iters = new HighLevel.QueryIter(
         (index: number, source: bindings.SourceType) => {
             let hash = HighLevel.loadCellLock(index, source).codeHash;

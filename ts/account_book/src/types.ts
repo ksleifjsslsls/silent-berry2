@@ -50,42 +50,42 @@ export class AccountBookData extends mol.Entity.Base<AccountBookDataLike, Accoun
 }
 
 export type AccountBookCellInfoLike = {
-    dob_selling_code_hash: BytesLike,
-    buy_intent_code_hash: BytesLike,
-    withdrawal_intent_code_hash: BytesLike,
-    xudt_script_hash: BytesLike,
-    input_type_proxy_lock_code_hash: BytesLike,
-    cluster_id: BytesLike,
+    dobSellingCodeHash: BytesLike,
+    buyIntentCodeHash: BytesLike,
+    withdrawalIntentCodeHash: BytesLike,
+    xudtScriptHash: BytesLike,
+    inputTypeProxyLockCodeHash: BytesLike,
+    clusterId: BytesLike,
     level: Num,
-    auther_id: BytesLike,
-    platform_id: BytesLike,
+    autherId: BytesLike,
+    platformId: BytesLike,
     price: Num,
 }
 @mol.codec(
     mol.struct({
-        dob_selling_code_hash: mol.Byte32,
-        buy_intent_code_hash: mol.Byte32,
-        withdrawal_intent_code_hash: mol.Byte32,
-        xudt_script_hash: mol.Byte32,
-        input_type_proxy_lock_code_hash: mol.Byte32,
-        cluster_id: mol.Byte32,
+        dobSellingCodeHash: mol.Byte32,
+        buyIntentCodeHash: mol.Byte32,
+        withdrawalIntentCodeHash: mol.Byte32,
+        xudtScriptHash: mol.Byte32,
+        inputTypeProxyLockCodeHash: mol.Byte32,
+        clusterId: mol.Byte32,
         level: mol.Uint8,
-        auther_id: mol.Byte32,
-        platform_id: mol.Byte32,
+        autherId: mol.Byte32,
+        platformId: mol.Byte32,
         price: mol.Uint128,
     }),
 )
 export class AccountBookCellInfo extends mol.Entity.Base<AccountBookCellInfoLike, AccountBookCellInfo>() {
     constructor(
-        public dob_selling_code_hash: Bytes,
-        public buy_intent_code_hash: Bytes,
-        public withdrawal_intent_code_hash: Bytes,
-        public xudt_script_hash: Bytes,
-        public input_type_proxy_lock_code_hash: Bytes,
-        public cluster_id: Bytes,
+        public dobSellingCodeHash: Bytes,
+        public buyIntentCodeHash: Bytes,
+        public withdrawalIntentCodeHash: Bytes,
+        public xudtScriptHash: Bytes,
+        public inputTypeProxyLockCodeHash: Bytes,
+        public clusterId: Bytes,
         public level: Num,
-        public auther_id: Bytes,
-        public platform_id: Bytes,
+        public autherId: Bytes,
+        public platformId: Bytes,
         public price: Num,
 
     ) {
@@ -96,36 +96,36 @@ export class AccountBookCellInfo extends mol.Entity.Base<AccountBookCellInfoLike
             return op;
         }
         return new AccountBookCellInfo(
-            op.dob_selling_code_hash,
-            op.buy_intent_code_hash,
-            op.withdrawal_intent_code_hash,
-            op.xudt_script_hash,
-            op.input_type_proxy_lock_code_hash,
-            op.cluster_id,
+            op.dobSellingCodeHash,
+            op.buyIntentCodeHash,
+            op.withdrawalIntentCodeHash,
+            op.xudtScriptHash,
+            op.inputTypeProxyLockCodeHash,
+            op.clusterId,
             op.level,
-            op.auther_id,
-            op.platform_id,
+            op.autherId,
+            op.platformId,
             op.price,
         );
     }
     eq(other: AccountBookCellInfo): boolean {
-        if (!bytesEq(this.dob_selling_code_hash, other.dob_selling_code_hash))
+        if (!bytesEq(this.dobSellingCodeHash, other.dobSellingCodeHash))
             return false;
-        if (!bytesEq(this.buy_intent_code_hash, other.buy_intent_code_hash))
+        if (!bytesEq(this.buyIntentCodeHash, other.buyIntentCodeHash))
             return false;
-        if (!bytesEq(this.withdrawal_intent_code_hash, other.withdrawal_intent_code_hash))
+        if (!bytesEq(this.withdrawalIntentCodeHash, other.withdrawalIntentCodeHash))
             return false;
-        if (!bytesEq(this.xudt_script_hash, other.xudt_script_hash))
+        if (!bytesEq(this.xudtScriptHash, other.xudtScriptHash))
             return false;
-        if (!bytesEq(this.input_type_proxy_lock_code_hash, other.input_type_proxy_lock_code_hash))
+        if (!bytesEq(this.inputTypeProxyLockCodeHash, other.inputTypeProxyLockCodeHash))
             return false;
-        if (!bytesEq(this.cluster_id, other.cluster_id))
+        if (!bytesEq(this.clusterId, other.clusterId))
             return false;
         if (this.level != other.level)
             return false;
-        if (!bytesEq(this.auther_id, other.auther_id))
+        if (!bytesEq(this.autherId, other.autherId))
             return false;
-        if (!bytesEq(this.platform_id, other.platform_id))
+        if (!bytesEq(this.platformId, other.platformId))
             return false;
         if (this.price != other.price)
             return false;
@@ -135,28 +135,28 @@ export class AccountBookCellInfo extends mol.Entity.Base<AccountBookCellInfoLike
 }
 
 export type AccountBookCellDataLike = {
-    smt_root_hash: BytesLike;
-    buyer_count: NumLike;
+    smtRootHash: BytesLike;
+    buyerCount: NumLike;
     info: AccountBookCellInfoLike,
-    profit_distribution_ratio: BytesLike,
-    profit_distribution_number: BytesLike,
+    profitDistributionRatio: BytesLike,
+    profitDistributionNumber: BytesLike,
 };
 @mol.codec(
     mol.table({
-        smt_root_hash: mol.Byte32,
-        buyer_count: mol.Uint32,
+        smtRootHash: mol.Byte32,
+        buyerCount: mol.Uint32,
         info: AccountBookCellInfo,
-        profit_distribution_ratio: mol.Bytes,
-        profit_distribution_number: mol.Bytes,
+        profitDistributionRatio: mol.Bytes,
+        profitDistributionNumber: mol.Bytes,
     }),
 )
 export class AccountBookCellData extends mol.Entity.Base<AccountBookCellDataLike, AccountBookCellData>() {
     constructor(
-        public smt_root_hash: Bytes,
-        public buyer_count: Num,
+        public smtRootHash: Bytes,
+        public buyerCount: Num,
         public info: AccountBookCellInfo,
-        public profit_distribution_ratio: Bytes,
-        public profit_distribution_number: Bytes,
+        public profitDistributionRatio: Bytes,
+        public profitDistributionNumber: Bytes,
 
     ) {
         super();
@@ -166,41 +166,41 @@ export class AccountBookCellData extends mol.Entity.Base<AccountBookCellDataLike
             return op;
         }
         return new AccountBookCellData(
-            op.smt_root_hash,
-            op.buyer_count,
+            op.smtRootHash,
+            op.buyerCount,
             AccountBookCellInfo.from(op.info),
-            op.profit_distribution_ratio,
-            op.profit_distribution_number,
+            op.profitDistributionRatio,
+            op.profitDistributionNumber,
         );
     }
 }
 
 export type DobSellingDataLike = {
-    account_book_script_hash: BytesLike,
-    spore_code_hash: BytesLike,
-    spore_data_hash: BytesLike,
-    buy_intent_code_hash: BytesLike,
-    owner_script_hash: BytesLike,
-    spore_lock_script_hash: BytesLike,
+    accountBookScriptHash: BytesLike,
+    sporeCodeHash: BytesLike,
+    sporeDataHash: BytesLike,
+    buyIntentCodeHash: BytesLike,
+    ownerScriptHash: BytesLike,
+    sporeLockScriptHash: BytesLike,
 };
 @mol.codec(
     mol.struct({
-        account_book_script_hash: mol.Byte32,
-        spore_code_hash: mol.Byte32,
-        spore_data_hash: mol.Byte32,
-        buy_intent_code_hash: mol.Byte32,
-        owner_script_hash: mol.Byte32,
-        spore_lock_script_hash: mol.Byte32,
+        accountBookScriptHash: mol.Byte32,
+        sporeCodeHash: mol.Byte32,
+        sporeDataHash: mol.Byte32,
+        buyIntentCodeHash: mol.Byte32,
+        ownerScriptHash: mol.Byte32,
+        sporeLockScriptHash: mol.Byte32,
     }),
 )
 export class DobSellingData extends mol.Entity.Base<DobSellingDataLike, DobSellingData>() {
     constructor(
-        public account_book_script_hash: Bytes,
-        public spore_code_hash: Bytes,
-        public spore_data_hash: Bytes,
-        public buy_intent_code_hash: Bytes,
-        public owner_script_hash: Bytes,
-        public spore_lock_script_hash: Bytes,
+        public accountBookScriptHash: Bytes,
+        public sporeCodeHash: Bytes,
+        public sporeDataHash: Bytes,
+        public buyIntentCodeHash: Bytes,
+        public ownerScriptHash: Bytes,
+        public sporeLockScriptHash: Bytes,
     ) {
         super();
     }
@@ -209,33 +209,33 @@ export class DobSellingData extends mol.Entity.Base<DobSellingDataLike, DobSelli
             return op;
         }
         return new DobSellingData(
-            op.account_book_script_hash,
-            op.spore_code_hash,
-            op.spore_data_hash,
-            op.buy_intent_code_hash,
-            op.owner_script_hash,
-            op.spore_lock_script_hash
+            op.accountBookScriptHash,
+            op.sporeCodeHash,
+            op.sporeDataHash,
+            op.buyIntentCodeHash,
+            op.ownerScriptHash,
+            op.sporeLockScriptHash
         );
     }
 }
 
 export type SporeDataLike = {
-    content_type: BytesLike,
+    contentType: BytesLike,
     content: BytesLike,
-    cluster_id?: BytesLike | null,
+    clusterId?: BytesLike | null,
 };
 @mol.codec(
     mol.table({
-        content_type: mol.Bytes,
+        contentType: mol.Bytes,
         content: mol.Bytes,
-        cluster_id: mol.BytesOpt,
+        clusterId: mol.BytesOpt,
     }),
 )
 export class SporeData extends mol.Entity.Base<SporeDataLike, SporeData>() {
     constructor(
-        public content_type: Bytes,
+        public contentType: Bytes,
         public content: Bytes,
-        public cluster_id: Bytes | null,
+        public clusterId: Bytes | null,
     ) {
         super();
     }
@@ -245,9 +245,9 @@ export class SporeData extends mol.Entity.Base<SporeDataLike, SporeData>() {
         }
 
         return new SporeData(
-            op.content_type,
+            op.contentType,
             op.content,
-            optionToBytes(op.cluster_id),
+            optionToBytes(op.clusterId),
         );
     }
 }

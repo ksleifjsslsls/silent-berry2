@@ -55,21 +55,21 @@ function verifyCellData(o: AccountBookCellData, n: AccountBookCellData) {
         throw "Modification of CellData is not allowed (AccountBookCellInfo)"
     }
 
-    let oldNum = o.profit_distribution_number;
-    let newNum = n.profit_distribution_number;
+    let oldNum = o.profitDistributionNumber;
+    let newNum = n.profitDistributionNumber;
     if (!bytesEq(oldNum, newNum)) {
         throw "Modification of CellData is not allowed (ProfitDistributionNumber)"
     }
 
-    let oldRatio = o.profit_distribution_ratio;
-    let newRatio = n.profit_distribution_ratio;
+    let oldRatio = o.profitDistributionRatio;
+    let newRatio = n.profitDistributionRatio;
     if (!bytesEq(oldRatio, newRatio)) {
         throw "Modification of CellData is not allowed (ProfitDistributionRatio)"
     }
 }
 
 function isSelling(newCellData: AccountBookCellData) {
-    let dobSellingCodeHash = newCellData.info.dob_selling_code_hash;
+    let dobSellingCodeHash = newCellData.info.dobSellingCodeHash;
 
     let count = 0;
     let iters = (new HighLevel.QueryIter(HighLevel.loadCellLock, bindings.SOURCE_INPUT));
@@ -84,7 +84,7 @@ function isSelling(newCellData: AccountBookCellData) {
     }
 
     count = 0;
-    let withdrawalCodeHash = newCellData.info.withdrawal_intent_code_hash;
+    let withdrawalCodeHash = newCellData.info.withdrawalIntentCodeHash;
     let iters2 = (new HighLevel.QueryIter(HighLevel.loadCellType, bindings.SOURCE_INPUT));
     for (let it of iters2) {
         if (it == null) continue;
@@ -106,8 +106,8 @@ function loadVerifiedCellData() {
 
     verifyCellData(oldData, newData);
 
-    let oldBuyerCount = oldData.buyer_count;
-    let newBuyerCount = newData.buyer_count;
+    let oldBuyerCount = oldData.buyerCount;
+    let newBuyerCount = newData.buyerCount;
 
     const s = isSelling(newData);
     if (s && oldBuyerCount + 1 != newBuyerCount) {
@@ -117,7 +117,7 @@ function loadVerifiedCellData() {
     }
     return {
         data: newData,
-        oldSmt: oldData.smt_root_hash,
+        oldSmt: oldData.smtRootHash,
         isSelling: s,
     }
 }

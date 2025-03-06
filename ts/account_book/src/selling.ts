@@ -8,7 +8,7 @@ import * as utils from "./utils"
 
 function loadSpore(source: bindings.SourceType, cellData: AccountBookCellData): [SporeData, ArrayBuffer] {
     let cellInfo = cellData.info;
-    let dobSellingCodeHash = cellInfo.dob_selling_code_hash;
+    let dobSellingCodeHash = cellInfo.dobSellingCodeHash;
 
     let sporeCodeHash: any, sporeDataHash: any;
     {
@@ -20,8 +20,8 @@ function loadSpore(source: bindings.SourceType, cellData: AccountBookCellData): 
                     throw `unknow error: Load dobsellingdata`
                 }
                 let dobData = DobSellingData.decode(data);
-                sporeCodeHash = dobData.spore_code_hash;
-                sporeDataHash = dobData.spore_data_hash;
+                sporeCodeHash = dobData.sporeCodeHash;
+                sporeDataHash = dobData.sporeDataHash;
                 return true;
             }
             return false;
@@ -63,12 +63,12 @@ export function selling(
     let [sporeData, sporeTypeId] = loadSpore(bindings.SOURCE_OUTPUT, cellData);
     let cellInfo = cellData.info;
 
-    let clusterId = sporeData.cluster_id;
+    let clusterId = sporeData.clusterId;
     if (clusterId == null) {
         throw `clusterId is Empty`
     }
     // Check cluster id
-    if (!bytesEq(clusterId, cellInfo.cluster_id)) {
+    if (!bytesEq(clusterId, cellInfo.clusterId)) {
         throw `The cluster id does not match`;
     }
 
@@ -82,7 +82,7 @@ export function selling(
     // Check price
     let price = BigInt(cellInfo.price);
 
-    let udtInfo = new utils.UdtInfo(cellInfo.xudt_script_hash);
+    let udtInfo = new utils.UdtInfo(cellInfo.xudtScriptHash);
     let accountBookUdt = utils.checkInputTypeProxyLock(cellData, udtInfo);
 
     if (accountBookUdt.input + price != accountBookUdt.output) {
@@ -104,7 +104,7 @@ export function selling(
         throw `Verify Input SMT failed`
     }
     if (!utils.checkSmt(
-        cellData.smt_root_hash,
+        cellData.smtRootHash,
         proof,
         newTotalIncome,
         accountBookUdt.output,

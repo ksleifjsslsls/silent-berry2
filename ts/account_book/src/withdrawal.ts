@@ -42,7 +42,7 @@ function getTotalWithdrawn(cellData: AccountBookCellData, witnessData: AccountBo
             throw `This Spore(${sporeLevel}) is not eligible for profit sharing`;
         }
 
-        let nums = cellData.profit_distribution_number;
+        let nums = cellData.profitDistributionNumber;
         if (nums.byteLength != accountBookLevel) {
             throw `The ProfitDistributionNumber price in the account book is wrong, it needs: ${accountBookLevel}, actual: ${nums.byteLength}`
         }
@@ -51,11 +51,11 @@ function getTotalWithdrawn(cellData: AccountBookCellData, witnessData: AccountBo
         smtKey = utils.ckbHash(sporeId);
     } else if (buyer instanceof Byte32) {
         let scriptHash = buyer.raw();
-        if (bytesEq(scriptHash, cellInfo.auther_id)) {
+        if (bytesEq(scriptHash, cellInfo.autherId)) {
             ratio = ratios[1];
             num = 1;
             smtKey = utils.ckbHashStr("Auther");
-        } else if (bytesEq(scriptHash, cellInfo.platform_id)) {
+        } else if (bytesEq(scriptHash, cellInfo.platformId)) {
             ratio = ratios[0];
             num = 1;
             smtKey = utils.ckbHashStr("Platform");
@@ -70,7 +70,7 @@ function getTotalWithdrawn(cellData: AccountBookCellData, witnessData: AccountBo
 }
 
 function getOutputUdt(cellData: AccountBookCellData, udtInfo: utils.UdtInfo, xudtLockScriptHash: ArrayBuffer) {
-    let withdrawalIntentCodeHash = cellData.info.withdrawal_intent_code_hash;
+    let withdrawalIntentCodeHash = cellData.info.withdrawalIntentCodeHash;
 
     let iters = new HighLevel.QueryIter((index: number, source: bindings.SourceType) => { }, bindings.SOURCE_INPUT);
     for (let output of udtInfo.outputs) {
@@ -87,7 +87,7 @@ export function withdrawal(
     cellData: AccountBookCellData,
     oldSmtHash: ArrayBuffer,
 ) {
-    let withdrawalData = getWithdrawalData(cellData.info.withdrawal_intent_code_hash);
+    let withdrawalData = getWithdrawalData(cellData.info.withdrawalIntentCodeHash);
     let buyer = withdrawalData.getBuyer().value();
     let xudtLockScriptHash = withdrawalData.getXudtLockScriptHash().raw();
 
@@ -95,7 +95,7 @@ export function withdrawal(
     let newTotalWithdrawn = totalWithdrawn.val;
     let smtKey = totalWithdrawn.key;
 
-    let udtInfo = new utils.UdtInfo(cellData.info.xudt_script_hash);
+    let udtInfo = new utils.UdtInfo(cellData.info.xudtScriptHash);
     let totalUdt = utils.checkInputTypeProxyLock(cellData, udtInfo);
     let withdrawalUdt = getOutputUdt(cellData, udtInfo, xudtLockScriptHash);
 
@@ -128,7 +128,7 @@ export function withdrawal(
         oldTotalWithdrawal)) {
         throw `Verify Input SMT failed`
     }
-    let newSmtHash = cellData.smt_root_hash;
+    let newSmtHash = cellData.smtRootHash;
     if (!utils.checkSmt(
         newSmtHash,
         proof,
