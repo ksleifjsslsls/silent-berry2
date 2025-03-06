@@ -15,8 +15,8 @@ function loadAccountBookData(index: number, source: bindings.SourceType) {
     if (witness == undefined) {
         throw `Load AccoutBook witness data failed: index(${index}) source(${source})`
     }
-    // return AccountBookData.decode(witness);
-    return new AccountBookData(witness);
+    return AccountBookData.decode(witness);
+    // return new AccountBookData(witness);
 }
 
 function isCreation() {
@@ -49,29 +49,36 @@ function theOnly(source: bindings.SourceType) {
 }
 
 function verifyCellData(o: AccountBookCellData, n: AccountBookCellData) {
-    let oInfo = o.getInfo();
-    let nInfo = n.getInfo();
+    let oInfo = o.info;
+    let nInfo = n.info;
+    // let oInfo = o.getInfo();
+    // let nInfo = n.getInfo();
 
-    // if (!oInfo.eq(nInfo)) {
-    if (!bytesEq(oInfo.view.buffer, nInfo.view.buffer)) {
+    if (!oInfo.eq(nInfo)) {
+        // if (!bytesEq(oInfo.view.buffer, nInfo.view.buffer)) {
         throw "Modification of CellData is not allowed (AccountBookCellInfo)"
     }
 
-    let oldNum = o.getProfitDistributionNumber().raw();
-    let newNum = n.getProfitDistributionNumber().raw();
+    let oldNum = o.profitDistributionNumber;
+    let newNum = n.profitDistributionNumber;
+    // let oldNum = o.getProfitDistributionNumber().raw();
+    // let newNum = n.getProfitDistributionNumber().raw();
     if (!bytesEq(oldNum, newNum)) {
         throw "Modification of CellData is not allowed (ProfitDistributionNumber)"
     }
 
-    let oldRatio = o.getProfitDistributionRatio().raw();
-    let newRatio = n.getProfitDistributionRatio().raw();
+    let oldRatio = o.profitDistributionRatio;
+    let newRatio = n.profitDistributionRatio;
+    // let oldRatio = o.getProfitDistributionRatio().raw();
+    // let newRatio = n.getProfitDistributionRatio().raw();
     if (!bytesEq(oldRatio, newRatio)) {
         throw "Modification of CellData is not allowed (ProfitDistributionRatio)"
     }
 }
 
 function isSelling(newCellData: AccountBookCellData) {
-    let dobSellingCodeHash = newCellData.getInfo().getDobSellingCodeHash().raw();
+    let dobSellingCodeHash = newCellData.info.dobSellingCodeHash;
+    // let dobSellingCodeHash = newCellData.getInfo().getDobSellingCodeHash().raw();
 
     let count = 0;
     let iters = (new HighLevel.QueryIter(HighLevel.loadCellLock, bindings.SOURCE_INPUT));
@@ -86,7 +93,8 @@ function isSelling(newCellData: AccountBookCellData) {
     }
 
     count = 0;
-    let withdrawalCodeHash = newCellData.getInfo().getWithdrawalIntentCodeHash().raw();
+    let withdrawalCodeHash = newCellData.info.withdrawalIntentCodeHash;
+    // let withdrawalCodeHash = newCellData.getInfo().getWithdrawalIntentCodeHash().raw();
     let iters2 = (new HighLevel.QueryIter(HighLevel.loadCellType, bindings.SOURCE_INPUT));
     for (let it of iters2) {
         if (it == null) continue;
@@ -108,8 +116,10 @@ function loadVerifiedCellData() {
 
     verifyCellData(oldData, newData);
 
-    let oldBuyerCount = oldData.getBuyerCount().toLittleEndianUint32();
-    let newBuyerCount = newData.getBuyerCount().toLittleEndianUint32();
+    let oldBuyerCount = oldData.buyerCount;
+    let newBuyerCount = newData.buyerCount;
+    // let oldBuyerCount = oldData.getBuyerCount().toLittleEndianUint32();
+    // let newBuyerCount = newData.getBuyerCount().toLittleEndianUint32();
 
     const s = isSelling(newData);
     if (s && oldBuyerCount + 1 != newBuyerCount) {
@@ -119,7 +129,8 @@ function loadVerifiedCellData() {
     }
     return {
         data: newData,
-        oldSmt: oldData.getSmtRootHash().raw(),
+        oldSmt: oldData.smtRootHash,
+        // oldSmt: oldData.getSmtRootHash().raw(),
         isSelling: s,
     }
 }

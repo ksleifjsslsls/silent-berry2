@@ -6,14 +6,14 @@ import { AccountBookCellData, SporeData } from "./types_define"
 
 export function loadAccountBookCellData(index: number, source: bindings.SourceType) {
     let data = bindings.loadCellData(index, source);
-    // return AccountBookCellData.decode(data);
-    return new AccountBookCellData(data);
+    return AccountBookCellData.decode(data);
+    // return new AccountBookCellData(data);
 }
 
 export function getRatios(cellData: AccountBookCellData, level: number) {
 
-    // let buf = new Uint8Array(cellData.profitDistributionRatio);
-    let buf = new Uint8Array(cellData.getProfitDistributionRatio().raw());
+    let buf = new Uint8Array(cellData.profitDistributionRatio);
+    // let buf = new Uint8Array(cellData.getProfitDistributionRatio().raw());
     if (buf.length != level + 2) {
         throw `The ProfitDistributionRatio price in the account book is wrong, it needs: ${level + 2}, actual: ${buf.length}`;
 
@@ -87,7 +87,8 @@ function charToNumber(c: number) {
 }
 
 export function getSporeLevel(sporeData: SporeData) {
-    let content = new Uint8Array(sporeData.getContent().raw());
+    let content = new Uint8Array(sporeData.content);
+    // let content = new Uint8Array(sporeData.getContent().raw());
     if (content.length == 0) {
         throw `spore data is empty`;
     }
@@ -159,7 +160,8 @@ export function checkInputTypeProxyLock(cellData: AccountBookCellData, udtInfo: 
     if (selfScriptHash == null) {
         throw "unknow error: Get GroupInput Type hash failed"
     }
-    let proxyLockCodeHash = cellData.getInfo().getInputTypeProxyLockCodeHash().raw();
+    let proxyLockCodeHash = cellData.info.inputTypeProxyLockCodeHash;
+    // let proxyLockCodeHash = cellData.getInfo().getInputTypeProxyLockCodeHash().raw();
     let iters = new HighLevel.QueryIter(
         (index: number, source: bindings.SourceType) => {
             let hash = HighLevel.loadCellLock(index, source).codeHash;
