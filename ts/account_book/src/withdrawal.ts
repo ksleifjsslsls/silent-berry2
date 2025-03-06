@@ -1,8 +1,8 @@
 import * as bindings from "@ckb-js-std/bindings";
-import { HighLevel, bytesEq, log } from "@ckb-js-std/core";
+import { HighLevel, bigintFromBytes, bytesEq, log } from "@ckb-js-std/core";
 import { WithdrawalIntentData, Byte32, WithdrawalSporeInfo } from "../../types/silent_berry"
 
-import { AccountBookData, AccountBookCellData } from "./types";
+import { AccountBookData, AccountBookCellData } from "./types_define";
 import * as utils from "./utils"
 
 function getWithdrawalData(hash: ArrayBuffer) {
@@ -28,8 +28,8 @@ function getWithdrawalData(hash: ArrayBuffer) {
 
 
 function getTotalWithdrawn(cellData: AccountBookCellData, witnessData: AccountBookData, buyer: Byte32 | WithdrawalSporeInfo) {
-    let cellInfo = cellData.info;
-    let accountBookLevel = cellInfo.level;
+    let cellInfo = cellData.getInfo();
+    let accountBookLevel = cellInfo.getLevel();
     let ratios = utils.getRatios(cellData, accountBookLevel);
 
     let ratio, num, smtKey;
@@ -42,7 +42,7 @@ function getTotalWithdrawn(cellData: AccountBookCellData, witnessData: AccountBo
             throw `This Spore(${sporeLevel}) is not eligible for profit sharing`;
         }
 
-        let nums = cellData.profitDistributionNumber;
+        let nums = cellData.getProfitDistributionNumber().raw();
         if (nums.byteLength != accountBookLevel) {
             throw `The ProfitDistributionNumber price in the account book is wrong, it needs: ${accountBookLevel}, actual: ${nums.byteLength}`
         }
@@ -51,11 +51,11 @@ function getTotalWithdrawn(cellData: AccountBookCellData, witnessData: AccountBo
         smtKey = utils.ckbHash(sporeId);
     } else if (buyer instanceof Byte32) {
         let scriptHash = buyer.raw();
-        if (bytesEq(scriptHash, cellInfo.autherId)) {
+        if (bytesEq(scriptHash, cellInfo.getAutherId().raw())) {
             ratio = ratios[1];
             num = 1;
             smtKey = utils.ckbHashStr("Auther");
-        } else if (bytesEq(scriptHash, cellInfo.platformId)) {
+        } else if (bytesEq(scriptHash, cellInfo.getPlatformId().raw())) {
             ratio = ratios[0];
             num = 1;
             smtKey = utils.ckbHashStr("Platform");
@@ -65,12 +65,12 @@ function getTotalWithdrawn(cellData: AccountBookCellData, witnessData: AccountBo
     } else {
         throw `Unknow WithdrawalBuyer type`;
     }
-    let totalIncome = BigInt(witnessData.totalIncomeUdt);
+    let totalIncome = bigintFromBytes(witnessData.getTotalIncomeUdt().raw());
     return { key: smtKey, val: totalIncome * BigInt(ratio) / BigInt(100 * num) }
 }
 
 function getOutputUdt(cellData: AccountBookCellData, udtInfo: utils.UdtInfo, xudtLockScriptHash: ArrayBuffer) {
-    let withdrawalIntentCodeHash = cellData.info.withdrawalIntentCodeHash;
+    let withdrawalIntentCodeHash = cellData.getInfo().getWithdrawalIntentCodeHash().raw();
 
     let iters = new HighLevel.QueryIter((index: number, source: bindings.SourceType) => { }, bindings.SOURCE_INPUT);
     for (let output of udtInfo.outputs) {
@@ -87,7 +87,7 @@ export function withdrawal(
     cellData: AccountBookCellData,
     oldSmtHash: ArrayBuffer,
 ) {
-    let withdrawalData = getWithdrawalData(cellData.info.withdrawalIntentCodeHash);
+    let withdrawalData = getWithdrawalData(cellData.getInfo().getWithdrawalIntentCodeHash().raw());
     let buyer = withdrawalData.getBuyer().value();
     let xudtLockScriptHash = withdrawalData.getXudtLockScriptHash().raw();
 
@@ -95,7 +95,7 @@ export function withdrawal(
     let newTotalWithdrawn = totalWithdrawn.val;
     let smtKey = totalWithdrawn.key;
 
-    let udtInfo = new utils.UdtInfo(cellData.info.xudtScriptHash);
+    let udtInfo = new utils.UdtInfo(cellData.getInfo().getXudtScriptHash().raw());
     let totalUdt = utils.checkInputTypeProxyLock(cellData, udtInfo);
     let withdrawalUdt = getOutputUdt(cellData, udtInfo, xudtLockScriptHash);
 
@@ -105,20 +105,20 @@ export function withdrawal(
 
     let oldTotalWithdrawal: bigint;
     {
-        let t = witnessData.withdrawnUdt;
+        let t = witnessData.getWithdrawnUdt().value().raw();
         if (t != null) {
-            oldTotalWithdrawal = BigInt(t);
+            oldTotalWithdrawal = bigintFromBytes(t);
         } else {
             oldTotalWithdrawal = BigInt(0);
         }
     }
-    let totalIncome = BigInt(witnessData.totalIncomeUdt);
+    let totalIncome = bigintFromBytes(witnessData.getTotalIncomeUdt().raw());
     if (totalUdt.input - totalUdt.output != newTotalWithdrawn - oldTotalWithdrawal) {
         throw `Error in calculation of withdrawal: total udt: old(${totalUdt.input}) new(${totalUdt.output}), totalWithdrawn: old(${oldTotalWithdrawal}) new(${newTotalWithdrawn})`
     }
 
     // SMT
-    let proof = witnessData.proof;
+    let proof = witnessData.getProof().raw();
     if (!utils.checkSmt(
         oldSmtHash,
         proof,
@@ -128,7 +128,7 @@ export function withdrawal(
         oldTotalWithdrawal)) {
         throw `Verify Input SMT failed`
     }
-    let newSmtHash = cellData.smtRootHash;
+    let newSmtHash = cellData.getSmtRootHash().raw();
     if (!utils.checkSmt(
         newSmtHash,
         proof,
