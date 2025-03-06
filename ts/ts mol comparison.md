@@ -28,9 +28,9 @@ Here, several test cases from the tests module were used for output:
 
 |          | BinSize | Creation | DobSelling | Withdrawal | Before main |
 | -------- | ------- | -------- | ---------- | ---------- | ----------- |
-| Rust     | -       | 1725504  | 4199959    | 4035906    | -           |
-| core/mol | 71201   | 25736088 | 35423605   | 36858819   | 19.2M       |
-| mol-es   | 78997   | 25164182 | 36024125   | 37829625   | 19.0M       |
+| Rust     | -       | 1.73M    | 4.20M      | 4.04M      | -           |
+| core/mol | 71201   | 25.74M   | 35.42M     | 36.86M     | 19.2M       |
+| mol-es   | 78997   | 25.16M   | 36.02M     | 37.83M     | 19.0M       |
 
 
 ### The following is the actual output
